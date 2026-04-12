@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title mb-3">Create an account</h2>
+          <% if (error) { %>
+            <div class="alert alert-danger"><%= error %></div>
+          <% } %>
+          <form method="post" action="/signup">
+            <div class="mb-3">
+              <label class="form-label">Full name</label>
+              <input name="username" class="form-control" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input name="email" type="email" class="form-control" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Password</label>
+              <input name="password" type="password" class="form-control" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Role (optional)</label>
+              <select name="role" class="form-select">
+                <option value="DEALER" selected>DEALER</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+            </div>
+            <div class="d-grid">
+              <button class="btn btn-primary">Sign up</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<%- include('partials/footer') %>

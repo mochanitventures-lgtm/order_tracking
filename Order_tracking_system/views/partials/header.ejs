@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Order tracking Management system</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+      <div class="container">
+        <a class="navbar-brand fw-bold" href="/">Order Tracking Management System</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link" href="/dashboard">Dashboard</a>
+            </li>
+            <% if (typeof user !== 'undefined' && user && (user.role === 'DEALER' || user.role === 'DISPATCHER')) { %>
+            <li class="nav-item">
+              <a class="nav-link" href="/tracking">Live Tracking</a>
+            </li>
+            <% } %>
+            <!-- My Orders menu - shown for DEALER role -->
+            <% if (typeof user !== 'undefined' && user && user.role === 'DEALER') { %>
+            <li class="nav-item">
+              <a class="nav-link" href="/orders">📋 My Orders</a>
+            </li>
+            <% } %>
+            <!-- Orders & Dispatch - shown for DISPATCHER only -->
+            <% if (typeof user !== 'undefined' && user && user.role === 'DISPATCHER') { %>
+            <li class="nav-item">
+              <a class="nav-link" href="/orders">📊 Orders & Dispatch</a>
+            </li>
+            <% } %>
+            <!-- Master Data menu - shown only when session user is ADMIN (injected via res.locals) -->
+            <% if (typeof user !== 'undefined' && user && user.role === 'ADMIN') { %>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="masterMenu" role="button" data-bs-toggle="dropdown">
+                Master Data
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="masterMenu">
+                <li><a class="dropdown-item" href="/master/products">📦 Products</a></li>
+                <li><a class="dropdown-item" href="/master/locations">📍 Locations</a></li>
+                <li><a class="dropdown-item" href="/master/dealers">🏢 Dealers</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/master/users">👥 Users</a></li>
+                <li><a class="dropdown-item" href="/master/user-roles">🔑 User Roles</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/admin/sessions">🔐 User Sessions & Audit</a></li>
+              </ul>
+            </li>
+            <% } %>
+          </ul>
+          <ul class="navbar-nav ms-auto">
+            <% if (typeof user !== 'undefined' && user) { %>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                  <%= user.username %> <span class="badge bg-light text-primary ms-1"><%= user.role %></span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item text-danger" href="/logout">Sign out</a></li>
+                </ul>
+              </li>
+            <% } else { %>
+              <li class="nav-item"><a class="nav-link" href="/signup">Sign Up</a></li>
+              <li class="nav-item"><a class="nav-link" href="/signin">Sign In</a></li>
+            <% } %>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
