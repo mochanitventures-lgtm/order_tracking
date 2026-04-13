@@ -114,3 +114,30 @@ ON UPDATE NO ACTION ON DELETE NO ACTION;
 ALTER TABLE "users"
 ADD FOREIGN KEY("dealer_id") REFERENCES "dealers"("dealer_id")
 ON UPDATE NO ACTION ON DELETE NO ACTION;
+
+--Added manually
+alter table odts.user_login_audit owner to odts_admin;
+
+alter table odts.dealers
+add column dealer_daily_limit numeric,
+add column dealer_monthly_target numeric;
+--
+
+CREATE ROLE odts_admin WITH LOGIN PASSWORD 'admin123';
+
+GRANT CONNECT ON DATABASE order_tracking TO odts_admin;
+
+CREATE SCHEMA odts AUTHORIZATION odts_admin;
+
+GRANT USAGE, CREATE ON SCHEMA odts TO odts_admin;
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA odts TO odts_admin;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA odts
+
+GRANT ALL ON TABLES TO odts_admin;
+
+set search_path to odts; 
+
+--goto ajitverma and run below command
+alter table odts.user_login_audit owner to odts_admin;
