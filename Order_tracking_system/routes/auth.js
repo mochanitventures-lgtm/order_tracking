@@ -58,6 +58,14 @@ function requireRole(role) {
   };
 }
 
+// ── /api/me — returns current session user (for Flutter / mobile clients) ────
+router.get('/api/me', (req, res) => {
+  if (req.session && req.session.user) {
+    return res.json(req.session.user);
+  }
+  return res.status(401).json({ error: 'Not authenticated' });
+});
+
 router.get('/signup', (req, res) => {
   res.render('signup', { error: null });
 });

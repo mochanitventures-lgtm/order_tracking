@@ -15,7 +15,7 @@
 
 <script type="text/babel">
 const { useState, useEffect } = React;
-const EMPTY = { dealer_name:'', dealer_code:'', dealer_phone:'', dealer_email:'', location_id:'', dealer_is_active_flag:true };
+const EMPTY = { dealer_name:'', dealer_code:'', dealer_phone:'', dealer_email:'', location_id:'', dealer_daily_limit:'', dealer_monthly_target:'', dealer_is_active_flag:true };
 
 function Toast({msg,type,onClose}){
   if(!msg) return null;
@@ -29,6 +29,8 @@ function App(){
   const [editId,setEditId]=useState(null); const [saving,setSaving]=useState(false);
   const [toast,setToast]=useState({msg:'',type:'success'});
   const [sortCol,setSortCol]=useState('dealer_id'); const [sortAsc,setSortAsc]=useState(true);
+  const [bulkUploading,setBulkUploading]=useState(false);
+  const fileRef=React.useRef(null);
 
   const notify=(msg,type='success')=>{setToast({msg,type});setTimeout(()=>setToast({msg:''}),4000);};
   const load=async()=>{setLoading(true);try{
@@ -40,15 +42,34 @@ function App(){
 
   const openAdd=()=>{setForm(EMPTY);setEditId(null);setShowModal(true);};
   const exportExcel=()=>{
-    const data=filtered.map(r=>({'ID':r.dealer_id,'Dealer Name':r.dealer_name,'Code':r.dealer_code||'','Phone':r.dealer_phone||'','Address':r.dealer_address||'','Active':r.dealer_is_active_flag?'Yes':'No','Created At':r.created_at?new Date(r.created_at).toLocaleDateString():''}) );
+    const data=filtered.map(r=>({'ID':r.dealer_id,'Dealer Name':r.dealer_name,'Code':r.dealer_code||'','Phone':r.dealer_phone||'','Address':r.dealer_address||'','Daily Limit':r.dealer_daily_limit||0,'Monthly Target':r.dealer_monthly_target||0,'Active':r.dealer_is_active_flag?'Yes':'No','Created At':r.created_at?new Date(r.created_at).toLocaleDateString():''}) );
     const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,'Dealers'); XLSX.writeFile(wb,'Dealers.xlsx');
   };
-  const openEdit=(r)=>{setForm({dealer_name:r.dealer_name,dealer_code:r.dealer_code||'',dealer_phone:r.dealer_phone||'',dealer_email:r.dealer_email||'',location_id:r.location_id||'',dealer_is_active_flag:r.dealer_is_active_flag});setEditId(r.dealer_id);setShowModal(true);};
+  const bulkUpload=async(e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    e.target.value='';
+    setBulkUploading(true);
+    try{
+      const ab=await file.arrayBuffer();
+      const wb=XLSX.read(ab,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rowsData=XLSX.utils.sheet_to_json(ws);
+      const updates=rowsData
+        .map(r=>{const k=Object.fromEntries(Object.entries(r).map(([h,v])=>[h.toLowerCase().trim(),v]));return{dealer_id:k['id'],dealer_daily_limit:parseFloat(k['daily limit']??0)||0,dealer_monthly_target:parseFloat(k['monthly target']??0)||0};})
+        .filter(u=>u.dealer_id);
+      if(!updates.length) throw new Error('No valid rows found. File must have columns: ID, Daily Limit, Monthly Target.');
+      const res=await fetch('/api/dealers/bulk-limits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({updates})});
+      const d=await res.json(); if(!res.ok) throw new Error(d.error);
+      notify(`${d.updated} dealer(s) limits updated successfully`);
+      setTimeout(()=>window.location.reload(),800);
+    }catch(e){notify(e.message,'danger');}finally{setBulkUploading(false);};
+  };
+  const openEdit=(r)=>{setForm({dealer_name:r.dealer_name,dealer_code:r.dealer_code||'',dealer_phone:r.dealer_phone||'',dealer_email:r.dealer_email||'',location_id:r.location_id||'',dealer_daily_limit:r.dealer_daily_limit||'',dealer_monthly_target:r.dealer_monthly_target||'',dealer_is_active_flag:r.dealer_is_active_flag});setEditId(r.dealer_id);setShowModal(true);};
 
   const save=async(e)=>{e.preventDefault();setSaving(true);
     try{const res=await fetch(editId?`/api/dealers/${editId}`:'/api/dealers',{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
-    const d=await res.json();if(!res.ok)throw new Error(d.error);notify(editId?'Updated':'Added');setShowModal(false);load();}
+    const d=await res.json();if(!res.ok)throw new Error(d.error);notify(editId?'Updated':'Added');setShowModal(false);setTimeout(()=>window.location.reload(),800);}
     catch(e){notify(e.message,'danger');}finally{setSaving(false);}};
 
   const sort=(col)=>{if(sortCol===col)setSortAsc(!sortAsc);else{setSortCol(col);setSortAsc(true);}};
@@ -64,6 +85,14 @@ function App(){
         <h5 className="mb-0 fw-semibold">Dealers</h5>
         <div className="d-flex gap-2">
           <button className="btn btn-outline-success btn-sm" onClick={exportExcel}>⬇️ Download Excel</button>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={bulkUpload}/>
+          <button
+            className="btn btn-outline-warning btn-sm"
+            title="It will update only Daily and Monthly limit"
+            onClick={()=>fileRef.current.click()}
+            disabled={bulkUploading}>
+            {bulkUploading?<span className="spinner-border spinner-border-sm me-1"></span>:null}📤 Bulk Upload
+          </button>
           <button className="btn btn-primary btn-sm" onClick={openAdd}>+ Add Dealer</button>
         </div>
       </div>
@@ -81,10 +110,12 @@ function App(){
               <th style={{cursor:'pointer'}} onClick={()=>sort('dealer_code')}>Code<SI col="dealer_code"/></th>
               <th>Phone</th><th>Email</th>
               <th style={{cursor:'pointer'}} onClick={()=>sort('location_name')}>Location<SI col="location_name"/></th>
+              <th style={{cursor:'pointer',textAlign:'right'}} onClick={()=>sort('dealer_daily_limit')}>Daily Limit<SI col="dealer_daily_limit"/></th>
+              <th style={{cursor:'pointer',textAlign:'right'}} onClick={()=>sort('dealer_monthly_target')}>Monthly Target<SI col="dealer_monthly_target"/></th>
               <th style={{width:'90px',textAlign:'center'}}>Status</th>
               <th style={{width:'90px',textAlign:'center'}}>Action</th>
             </tr></thead>
-            <tbody>{filtered.length===0?<tr><td colSpan="8" className="text-center text-muted py-4">No dealers found</td></tr>:
+            <tbody>{filtered.length===0?<tr><td colSpan="10" className="text-center text-muted py-4">No dealers found</td></tr>:
               filtered.map(r=><tr key={r.dealer_id}>
                 <td>{r.dealer_id}</td>
                 <td className="fw-semibold">{r.dealer_name}</td>
@@ -92,6 +123,8 @@ function App(){
                 <td>{r.dealer_phone||<span className="text-muted">—</span>}</td>
                 <td>{r.dealer_email||<span className="text-muted">—</span>}</td>
                 <td>{r.location_name||<span className="text-muted">—</span>}</td>
+                <td className="text-end">{r.dealer_daily_limit!=null?Number(r.dealer_daily_limit).toLocaleString():<span className="text-muted">—</span>}</td>
+                <td className="text-end">{r.dealer_monthly_target!=null?Number(r.dealer_monthly_target).toLocaleString():<span className="text-muted">—</span>}</td>
                 <td className="text-center">{r.dealer_is_active_flag?<span className="badge bg-success">Active</span>:<span className="badge bg-secondary">Inactive</span>}</td>
                 <td className="text-center"><button className="btn btn-outline-primary btn-sm" onClick={()=>openEdit(r)}>Edit</button></td>
               </tr>)
@@ -119,6 +152,10 @@ function App(){
                   <option value="">-- Select Location --</option>
                   {locs.map(l=><option key={l.location_id} value={l.location_id}>{l.location_name}</option>)}
                 </select></div>
+              <div className="col-md-6"><label className="form-label fw-semibold">Daily Limit</label>
+                <input className="form-control" type="number" min="0" step="0.01" placeholder="e.g. 100" value={form.dealer_daily_limit} onChange={e=>setForm({...form,dealer_daily_limit:e.target.value})}/></div>
+              <div className="col-md-6"><label className="form-label fw-semibold">Monthly Target</label>
+                <input className="form-control" type="number" min="0" step="0.01" placeholder="e.g. 2000" value={form.dealer_monthly_target} onChange={e=>setForm({...form,dealer_monthly_target:e.target.value})}/></div>
               <div className="col-md-6 d-flex align-items-end"><div className="form-check form-switch">
                 <input className="form-check-input" type="checkbox" id="dealActive" checked={form.dealer_is_active_flag} onChange={e=>setForm({...form,dealer_is_active_flag:e.target.checked})}/>
                 <label className="form-check-label" htmlFor="dealActive">Active</label>

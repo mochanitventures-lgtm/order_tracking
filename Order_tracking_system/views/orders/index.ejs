@@ -18,12 +18,10 @@ const { useState, useEffect } = React;
 const IS_ADMIN = window._IS_ADMIN === true;
 
 const STATUS_CONFIG = {
-  PENDING:    { color: 'warning',   text: 'Pending',     icon: '🕐' },
-  CONFIRMED:  { color: 'info',      text: 'Confirmed',   icon: '✅' },
-  DISPATCHED: { color: 'primary',   text: 'Dispatched',  icon: '📦' },
-  IN_TRANSIT: { color: 'purple',    text: 'In Transit',  icon: '🚛' },
-  DELIVERED:  { color: 'success',   text: 'Delivered',   icon: '🏁' },
-  CANCELLED:  { color: 'secondary', text: 'Cancelled',   icon: '❌' },
+  ORDER_PLACED: { color: 'warning',   text: 'Order Placed', icon: '🕐' },
+  ACCEPTED:     { color: 'info',      text: 'Accepted',     icon: '✅' },
+  DISPATCHED:   { color: 'primary',   text: 'Dispatched',   icon: '📦' },
+  ON_HOLD:      { color: 'secondary', text: 'On Hold',      icon: '⏸️' },
 };
 
 const UNITS = ['MT', 'KG', 'NOS', 'PCS', 'TON'];
@@ -32,9 +30,8 @@ const EMPTY_FORM = { product_name: '', quantity: '', unit: 'MT', delivery_locati
 
 function StatusBadge({ status }) {
   const cfg = STATUS_CONFIG[status] || { color: 'secondary', text: status };
-  const style = status === 'IN_TRANSIT' ? { background: '#6f42c1', color: '#fff' } : {};
   return (
-    <span className={`badge bg-${cfg.color}`} style={style}>
+    <span className={`badge bg-${cfg.color}`}>
       {cfg.icon} {cfg.text}
     </span>
   );
@@ -181,8 +178,8 @@ function DispatchModal({ order, onClose }) {
                 <div className="mt-4">
                   <h6 className="fw-bold text-muted mb-3 text-uppercase small">Order Progress</h6>
                   <div className="d-flex align-items-center gap-0 flex-wrap">
-                    {['PENDING','CONFIRMED','DISPATCHED','IN_TRANSIT','DELIVERED'].map((s, i, arr) => {
-                      const statuses = ['PENDING','CONFIRMED','DISPATCHED','IN_TRANSIT','DELIVERED'];
+                    {['ORDER_PLACED','ACCEPTED','DISPATCHED'].map((s, i, arr) => {
+                      const statuses = ['ORDER_PLACED','ACCEPTED','DISPATCHED'];
                       const currentIdx = statuses.indexOf(order.order_status);
                       const stepIdx = statuses.indexOf(s);
                       const done = stepIdx <= currentIdx;
@@ -361,11 +358,25 @@ function App() {
 
   useEffect(() => { load(); }, []);
 
+  const changeStatus = async (orderId, newStatus) => {
+    try {
+      const res = await fetch(`/api/dealer/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      notify(`Order #${orderId} → ${STATUS_CONFIG[newStatus]?.text}`);
+      load();
+    } catch(e) { notify(e.message, 'danger'); }
+  };
+
   const counts = {
-    total: orders.length,
-    pending: orders.filter(o => o.order_status === 'PENDING').length,
-    inTransit: orders.filter(o => o.order_status === 'IN_TRANSIT' || o.order_status === 'DISPATCHED').length,
-    delivered: orders.filter(o => o.order_status === 'DELIVERED').length,
+    total:       orders.length,
+    orderPlaced: orders.filter(o => o.order_status === 'ORDER_PLACED').length,
+    onHold:      orders.filter(o => o.order_status === 'ON_HOLD').length,
+    dispatched:  orders.filter(o => o.order_status === 'DISPATCHED').length,
   };
 
   const filtered = orders.filter(o => {
@@ -436,10 +447,10 @@ function App() {
 
       {/* Summary Cards */}
       <div className="row mb-2">
-        <SummaryCard label="Total Orders"  value={counts.total}     color="primary" icon="📋" />
-        <SummaryCard label="Pending"       value={counts.pending}   color="warning" icon="🕐" />
-        <SummaryCard label="In Transit"    value={counts.inTransit} color="info"    icon="🚛" />
-        <SummaryCard label="Delivered"     value={counts.delivered} color="success" icon="🏁" />
+        <SummaryCard label="Total Orders"  value={counts.total}       color="primary"   icon="📋" />
+        <SummaryCard label="Order Placed"  value={counts.orderPlaced} color="warning"   icon="🕐" />
+        <SummaryCard label="On Hold"       value={counts.onHold}      color="secondary" icon="⏸️" />
+        <SummaryCard label="Dispatched"    value={counts.dispatched}  color="primary"   icon="📦" />
       </div>
 
       {/* Orders Table */}
@@ -531,6 +542,27 @@ function App() {
                             >
                               Track
                             </a>
+                          )}
+                          {IS_ADMIN && o.order_status === 'ORDER_PLACED' && (
+                            <>
+                              <button className="btn btn-success btn-sm" title="Accept this order" onClick={() => changeStatus(o.order_id, 'ACCEPTED')}>Accept</button>
+                              <button className="btn btn-outline-secondary btn-sm" title="Put order on hold" onClick={() => changeStatus(o.order_id, 'ON_HOLD')}>On Hold</button>
+                            </>
+                          )}
+                          {IS_ADMIN && o.order_status === 'ACCEPTED' && (
+                            <button className="btn btn-primary btn-sm" title="Mark as dispatched" onClick={() => changeStatus(o.order_id, 'DISPATCHED')}>Dispatch</button>
+                          )}
+                          {IS_ADMIN && o.order_status === 'ON_HOLD' && o.on_hold_by !== 'DEALER' && (
+                            <button className="btn btn-warning btn-sm" title="Reopen to Order Placed" onClick={() => changeStatus(o.order_id, 'ORDER_PLACED')}>Reopen</button>
+                          )}
+                          {IS_ADMIN && o.order_status === 'ON_HOLD' && o.on_hold_by === 'DEALER' && (
+                            <span className="badge bg-secondary" title="Put on hold by dealer — only dealer can reopen">🔒 Dealer Hold</span>
+                          )}
+                          {!IS_ADMIN && o.order_status === 'ORDER_PLACED' && (
+                            <button className="btn btn-outline-secondary btn-sm" title="Put this order on hold" onClick={() => changeStatus(o.order_id, 'ON_HOLD')}>On Hold</button>
+                          )}
+                          {!IS_ADMIN && o.order_status === 'ON_HOLD' && o.on_hold_by === 'DEALER' && (
+                            <button className="btn btn-warning btn-sm" title="Reopen order" onClick={() => changeStatus(o.order_id, 'ORDER_PLACED')}>Reopen</button>
                           )}
                         </div>
                       </td>
