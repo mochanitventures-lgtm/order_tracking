@@ -80,7 +80,7 @@ router.post('/signup', async (req, res) => {
     if (existing) return res.render('signup', { error: 'Email already registered' });
 
     const user = await userModel.createUser({ username, email, password, roleName: role || 'user' });
-    req.session.user = { id: user.id, username: user.username, email: user.email, role: role || 'user' };
+    req.session.user = { id: user.id, username: user.username, email: user.email, role: role || 'user', dealer_id: user.dealer_id || null };
     res.redirect('/dashboard');
   } catch (err) {
     console.error(err);
@@ -109,7 +109,7 @@ router.post('/signin', async (req, res) => {
       return res.render('signin', { error: 'Invalid credentials' });
     }
 
-    req.session.user = { id: user.id, username: user.username, email: user.email, mobile: user.mobile || null, role: user.role || 'user' };
+    req.session.user = { id: user.id, username: user.username, email: user.email, mobile: user.mobile || null, role: user.role || 'user', dealer_id: user.dealer_id || null };
     await insertAudit(req, req.session.user, 'PASSWORD', 'SUCCESS');
     res.redirect('/dashboard');
   } catch (err) {
@@ -167,7 +167,7 @@ router.post('/verify-otp', async (req, res) => {
     // load user and create session
     const user = await userModel.findUserById(stored.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    req.session.user = { id: user.id, username: user.username, email: user.email, mobile: user.mobile || phone, role: user.role || 'user' };
+    req.session.user = { id: user.id, username: user.username, email: user.email, mobile: user.mobile || phone, role: user.role || 'user', dealer_id: user.dealer_id || null };
     // clear otp
     delete req.session.otp;
     await insertAudit(req, req.session.user, 'OTP', 'SUCCESS');

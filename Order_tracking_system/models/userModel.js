@@ -6,7 +6,7 @@ const SALT_ROUNDS = 10;
 // The database uses `odts` schema with different column names; map them to our app's expected fields
 async function findUserByEmail(email) {
   const res = await db.query(
-    `SELECT u.user_id as id, u.user_name as username, u.user_email as email, u.password_hash, r.role_name as role, u.user_role_id as role_id
+    `SELECT u.user_id as id, u.user_name as username, u.user_email as email, u.password_hash, u.dealer_id, r.role_name as role, u.user_role_id as role_id
      FROM odts.users u LEFT JOIN odts.user_roles r ON u.user_role_id = r.role_id WHERE u.user_email = $1`,
     [email]
   );
@@ -15,7 +15,7 @@ async function findUserByEmail(email) {
 
 async function findUserById(id) {
   const res = await db.query(
-    `SELECT u.user_id as id, u.user_name as username, u.user_email as email, r.role_name as role, u.user_role_id as role_id
+    `SELECT u.user_id as id, u.user_name as username, u.user_email as email, u.dealer_id, r.role_name as role, u.user_role_id as role_id
      FROM odts.users u LEFT JOIN odts.user_roles r ON u.user_role_id = r.role_id WHERE u.user_id = $1`,
     [id]
   );
@@ -24,7 +24,7 @@ async function findUserById(id) {
 
 async function findUserByPhone(phone) {
   const res = await db.query(
-    `SELECT u.user_id as id, u.user_name as username, u.user_email as email, u.user_phone as phone, u.password_hash, r.role_name as role, u.user_role_id as role_id
+    `SELECT u.user_id as id, u.user_name as username, u.user_email as email, u.user_phone as phone, u.password_hash, u.dealer_id, r.role_name as role, u.user_role_id as role_id
      FROM odts.users u LEFT JOIN odts.user_roles r ON u.user_role_id = r.role_id WHERE u.user_phone = $1`,
     [phone]
   );

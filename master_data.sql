@@ -42,23 +42,35 @@ SELECT * FROM odts.dealers;
 ALTER TABLE odts.users
 ALTER COLUMN user_id RESTART WITH 1;
 DELETE FROM odts.users;
---user as dealer
-INSERT INTO odts.users 
+INSERT INTO odts.users
 (user_name, user_phone, user_email, password_hash, user_is_active_flag, user_role_id, dealer_id)
 VALUES
-('Dealer XYZ', '9100000002', 'xyz@dealer.com', 'hashed_pwd', TRUE, 1, 1),
-('Dealer Sharma', '9100000003', 'sharma@dealer.com', 'hashed_pwd', TRUE, 1,2),
-('Dealer Gupta', '9100000004', 'gupta@dealer.com', 'hashed_pwd', TRUE, 1, 3),
-('Dealer Verma', '9100000005', 'verma@dealer.com', 'hashed_pwd', TRUE, 1, 4),
-('Dealer Agarwal', '9100000006', 'agarwal@dealer.com', 'hashed_pwd', TRUE, 1, 5),
-('Dealer Kumar', '9100000007', 'kumar@dealer.com', 'hashed_pwd', TRUE, 1, 6),
-('Dealer Singh', '9100000008', 'singh@dealer.com', 'hashed_pwd', TRUE, 1, 7),
-('Dealer Maheshwari', '9100000009', 'maheshwari@dealer.com', 'hashed_pwd', TRUE, 1, 8),
-('Dealer Jain', '9100000010', 'jain@dealer.com', 'hashed_pwd', TRUE, 1, 9),
-('Dealer Om', '9100000011', 'om@dealer.com', 'hashed_pwd', TRUE, 1, 10),
---user as dispatcher
-('Raju bhaiya Dispatcher', '9000000002', 'dispatcher@test.com', 'hashed_pwd', TRUE, 2);
-ON CONFLICT (user_phone) DO NOTHING;
+(
+	'ODTS Admin',
+	'9999999999',
+	'admin@odts.com',
+	'$2b$10$d413UrdEvgjIfL3qXWxbeeBAWq5D.51uGqa6S6mjtplDNBpsa5we6',
+	TRUE,
+	(SELECT role_id FROM odts.user_roles WHERE role_name = 'ADMIN'),
+	NULL
+),
+(
+	'Dealer Sharma',
+	'9100000003',
+	'sharma@dealer.com',
+	'$2b$10$cWhJZM2oH4bXBImiDO3unet.DkKgqVaANchlCeKYtn7sqJp95Vz2a',
+	TRUE,
+	(SELECT role_id FROM odts.user_roles WHERE role_name = 'DEALER'),
+	(SELECT dealer_id FROM odts.dealers WHERE dealer_code = 'SHR003')
+)
+ON CONFLICT (user_phone) DO UPDATE
+SET
+	user_name = EXCLUDED.user_name,
+	user_email = EXCLUDED.user_email,
+	password_hash = EXCLUDED.password_hash,
+	user_is_active_flag = EXCLUDED.user_is_active_flag,
+	user_role_id = EXCLUDED.user_role_id,
+	dealer_id = EXCLUDED.dealer_id;
 SELECT * FROM odts.users;
 
 ALTER TABLE odts.products
