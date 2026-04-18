@@ -1,13 +1,7 @@
-require('dotenv').config();
 const { Pool } = require('pg');
+const { getPoolConfig } = require('../config/database');
 
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'odts_admin',
-  password: process.env.DB_PASSWORD || 'admin123',
-  database: process.env.DB_NAME || 'order_tracking',
-  port: process.env.DB_PORT || 5432
-});
+const pool = new Pool(getPoolConfig());
 
 async function run() {
   const client = await pool.connect();

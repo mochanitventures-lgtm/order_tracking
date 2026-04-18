@@ -16,9 +16,11 @@
         </button>
         <div class="collapse navbar-collapse" id="mainNav">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <% if (typeof user !== 'undefined' && user) { %>
             <li class="nav-item">
               <a class="nav-link" href="/dashboard">Dashboard</a>
             </li>
+            <% } %>
             <% if (typeof user !== 'undefined' && user && (user.role === 'DEALER' || user.role === 'DISPATCHER')) { %>
             <li class="nav-item">
               <a class="nav-link" href="/tracking">Live Tracking</a>
@@ -47,7 +49,7 @@
                 <li><a class="dropdown-item" href="/master/locations">📍 Locations</a></li>
                 <li><a class="dropdown-item" href="/master/dealers">🏢 Dealers</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="/master/users">👥 Users</a></li>
+                <li><a class="dropdown-item" href="/master/users">👥 Login Users</a></li>
                 <li><a class="dropdown-item" href="/master/user-roles">🔑 User Roles</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="/admin/sessions">🔐 User Sessions & Audit</a></li>
@@ -66,7 +68,6 @@
                 </ul>
               </li>
             <% } else { %>
-              <li class="nav-item"><a class="nav-link" href="/signup">Sign Up</a></li>
               <li class="nav-item"><a class="nav-link" href="/signin">Sign In</a></li>
             <% } %>
           </ul>

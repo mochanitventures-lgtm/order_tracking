@@ -11,109 +11,28 @@
 
           <ul class="nav nav-tabs mb-3" id="signinTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="mobile-tab" data-bs-toggle="tab" data-bs-target="#mobile" type="button" role="tab">Mobile / OTP</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab">Username / Password</button>
+              <button class="nav-link active" id="password-tab" type="button" role="tab">User Name / Password</button>
             </li>
           </ul>
 
-          <div class="tab-content">
-            <div class="tab-pane fade show active" id="mobile" role="tabpanel">
-              <form id="requestOtpForm">
-                <div class="mb-3">
-                  <label class="form-label">Mobile number</label>
-                  <input name="phone" id="phone" type="text" class="form-control" placeholder="e.g. 9100000002" required />
-                </div>
-                <div class="mb-3 d-flex gap-2">
-                  <button id="requestOtpBtn" class="btn btn-outline-primary">Request OTP</button>
-                  <div id="otpSent" class="align-self-center text-success" style="display:none">OTP sent</div>
-                </div>
-              </form>
-
-              <form id="verifyOtpForm" style="display:none">
-                <div class="mb-3">
-                  <label class="form-label">Enter OTP</label>
-                  <input name="otp" id="otp" type="text" class="form-control" required />
-                </div>
-                <div class="d-grid">
-                  <button id="verifyOtpBtn" class="btn btn-primary">Verify OTP</button>
-                </div>
-              </form>
-              <div id="otpMessage" class="mt-2"></div>
+          <form method="post" action="/signin">
+            <div class="mb-3">
+              <label class="form-label">User Name</label>
+              <input name="user_login_name" type="text" class="form-control" placeholder="Enter your user name" required />
             </div>
-
-            <div class="tab-pane fade" id="password" role="tabpanel">
-              <form method="post" action="/signin">
-                <div class="mb-3">
-                  <label class="form-label">Username</label>
-                  <input name="email" type="text" class="form-control" placeholder="Enter your username or email" required />
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Password</label>
-                  <input name="password" type="password" class="form-control" required />
-                </div>
-                <div class="d-grid">
-                  <button class="btn btn-primary">Sign in</button>
-                </div>
-              </form>
+            <div class="mb-3">
+              <label class="form-label">Password</label>
+              <input name="password" type="password" class="form-control" placeholder="Enter your password" required />
             </div>
-          </div>
+            <div class="d-flex gap-2 mt-4">
+              <button class="btn btn-primary" type="submit">Sign in</button>
+              <button class="btn btn-outline-secondary" type="reset">Reset</button>
+            </div>
+          </form>
 
         </div>
       </div>
     </div>
   </div>
-
-  <script>
-    document.getElementById('requestOtpForm').addEventListener('submit', async function(e){
-      e.preventDefault();
-      const phone = document.getElementById('phone').value;
-      const btn = document.getElementById('requestOtpBtn');
-      const msgBox = document.getElementById('otpMessage');
-      btn.disabled = true;
-      msgBox.innerHTML = '';
-      document.getElementById('verifyOtpForm').style.display = 'none';
-      document.getElementById('otpSent').style.display = 'none';
-
-      try {
-        const res = await fetch('/request-otp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phone }) });
-        const data = await res.json();
-        btn.disabled = false;
-
-        if (res.ok) {
-          document.getElementById('otpSent').style.display = 'block';
-          document.getElementById('verifyOtpForm').style.display = 'block';
-          msgBox.innerHTML = '<div class="alert alert-info mt-2 mb-0">Hi <strong>' + data.userName + '</strong>! OTP sent. <small class="text-muted">[Dev mode OTP: ' + data.otp + ']</small></div>';
-        } else if (data.type === 'not_found') {
-          msgBox.innerHTML = '<div class="alert alert-warning mt-2 mb-0">' + data.error + ' <a href="/signup" class="alert-link">Sign up here</a>.</div>';
-        } else if (data.type === 'service_down') {
-          msgBox.innerHTML = '<div class="alert alert-danger mt-2 mb-0">' + data.error + '</div>';
-        } else {
-          msgBox.innerHTML = '<div class="alert alert-danger mt-2 mb-0">' + (data.error || 'Error requesting OTP') + '</div>';
-        }
-      } catch (err) {
-        btn.disabled = false;
-        msgBox.innerHTML = '<div class="alert alert-danger mt-2 mb-0">Network error. Please try again.</div>';
-      }
-    });
-
-    document.getElementById('verifyOtpForm').addEventListener('submit', async function(e){
-      e.preventDefault();
-      const phone = document.getElementById('phone').value;
-      const otp = document.getElementById('otp').value;
-      const btn = document.getElementById('verifyOtpBtn');
-      btn.disabled = true;
-      const res = await fetch('/verify-otp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phone, otp }) });
-      const data = await res.json();
-      btn.disabled = false;
-      if (res.ok) {
-        // redirect to dashboard
-        window.location = '/dashboard';
-      } else {
-        document.getElementById('otpMessage').innerText = data.error || 'Invalid OTP';
-      }
-    });
-  </script>
 
 <%- include('partials/footer') %>

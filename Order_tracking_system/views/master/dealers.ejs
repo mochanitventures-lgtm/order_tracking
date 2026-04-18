@@ -15,7 +15,7 @@
 
 <script type="text/babel">
 const { useState, useEffect } = React;
-const EMPTY = { dealer_name:'', dealer_code:'', dealer_phone:'', dealer_email:'', location_id:'', dealer_daily_limit:'', dealer_monthly_target:'', dealer_is_active_flag:true };
+const EMPTY = { dealer_name:'', dealer_company_name:'', dealer_code:'', dealer_phone:'', dealer_email:'', location_id:'', dealer_daily_limit:'', dealer_monthly_target:'', dealer_is_active_flag:true };
 
 function Toast({msg,type,onClose}){
   if(!msg) return null;
@@ -42,7 +42,7 @@ function App(){
 
   const openAdd=()=>{setForm(EMPTY);setEditId(null);setShowModal(true);};
   const exportExcel=()=>{
-    const data=filtered.map(r=>({'ID':r.dealer_id,'Dealer Name':r.dealer_name,'Code':r.dealer_code||'','Phone':r.dealer_phone||'','Address':r.dealer_address||'','Daily Limit':r.dealer_daily_limit||0,'Monthly Target':r.dealer_monthly_target||0,'Active':r.dealer_is_active_flag?'Yes':'No','Created At':r.created_at?new Date(r.created_at).toLocaleDateString():''}) );
+    const data=filtered.map(r=>({'ID':r.dealer_id,'Dealer Name':r.dealer_name,'Dealer Company Name':r.dealer_company_name||'','Dealer Code':r.dealer_code||'','Phone':r.dealer_phone||'','Address':r.dealer_address||'','Daily Limit':r.dealer_daily_limit||0,'Monthly Target':r.dealer_monthly_target||0,'Active':r.dealer_is_active_flag?'Yes':'No','Created At':r.created_at?new Date(r.created_at).toLocaleDateString():''}) );
     const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,'Dealers'); XLSX.writeFile(wb,'Dealers.xlsx');
   };
@@ -65,7 +65,7 @@ function App(){
       setTimeout(()=>window.location.reload(),800);
     }catch(e){notify(e.message,'danger');}finally{setBulkUploading(false);};
   };
-  const openEdit=(r)=>{setForm({dealer_name:r.dealer_name,dealer_code:r.dealer_code||'',dealer_phone:r.dealer_phone||'',dealer_email:r.dealer_email||'',location_id:r.location_id||'',dealer_daily_limit:r.dealer_daily_limit||'',dealer_monthly_target:r.dealer_monthly_target||'',dealer_is_active_flag:r.dealer_is_active_flag});setEditId(r.dealer_id);setShowModal(true);};
+  const openEdit=(r)=>{setForm({dealer_name:r.dealer_name,dealer_company_name:r.dealer_company_name||'',dealer_code:r.dealer_code||'',dealer_phone:r.dealer_phone||'',dealer_email:r.dealer_email||'',location_id:r.location_id||'',dealer_daily_limit:r.dealer_daily_limit||'',dealer_monthly_target:r.dealer_monthly_target||'',dealer_is_active_flag:r.dealer_is_active_flag});setEditId(r.dealer_id);setShowModal(true);};
 
   const save=async(e)=>{e.preventDefault();setSaving(true);
     try{const res=await fetch(editId?`/api/dealers/${editId}`:'/api/dealers',{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
@@ -75,7 +75,7 @@ function App(){
   const sort=(col)=>{if(sortCol===col)setSortAsc(!sortAsc);else{setSortCol(col);setSortAsc(true);}};
   const SI=({col})=>sortCol===col?<span className="ms-1">{sortAsc?'↑':'↓'}</span>:<span className="text-muted ms-1">⇅</span>;
 
-  const filtered=[...rows].filter(r=>(r.dealer_name+' '+(r.dealer_code||'')+' '+(r.location_name||'')).toLowerCase().includes(search.toLowerCase()))
+  const filtered=[...rows].filter(r=>(r.dealer_name+' '+(r.dealer_company_name||'')+' '+(r.dealer_code||'')+' '+(r.location_name||'')).toLowerCase().includes(search.toLowerCase()))
     .sort((a,b)=>{let va=a[sortCol],vb=b[sortCol];if(typeof va==='string')va=va.toLowerCase();if(typeof vb==='string')vb=vb.toLowerCase();return sortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);});
 
   return(<div>
@@ -107,7 +107,8 @@ function App(){
             <thead className="table-light"><tr>
               <th style={{cursor:'pointer',width:'60px'}} onClick={()=>sort('dealer_id')}>ID<SI col="dealer_id"/></th>
               <th style={{cursor:'pointer'}} onClick={()=>sort('dealer_name')}>Dealer Name<SI col="dealer_name"/></th>
-              <th style={{cursor:'pointer'}} onClick={()=>sort('dealer_code')}>Code<SI col="dealer_code"/></th>
+              <th style={{cursor:'pointer'}} onClick={()=>sort('dealer_company_name')}>Dealer Company Name<SI col="dealer_company_name"/></th>
+              <th style={{cursor:'pointer'}} onClick={()=>sort('dealer_code')}>Dealer Code<SI col="dealer_code"/></th>
               <th>Phone</th><th>Email</th>
               <th style={{cursor:'pointer'}} onClick={()=>sort('location_name')}>Location<SI col="location_name"/></th>
               <th style={{cursor:'pointer',textAlign:'right'}} onClick={()=>sort('dealer_daily_limit')}>Daily Limit<SI col="dealer_daily_limit"/></th>
@@ -115,10 +116,11 @@ function App(){
               <th style={{width:'90px',textAlign:'center'}}>Status</th>
               <th style={{width:'90px',textAlign:'center'}}>Action</th>
             </tr></thead>
-            <tbody>{filtered.length===0?<tr><td colSpan="10" className="text-center text-muted py-4">No dealers found</td></tr>:
+            <tbody>{filtered.length===0?<tr><td colSpan="11" className="text-center text-muted py-4">No dealers found</td></tr>:
               filtered.map(r=><tr key={r.dealer_id}>
                 <td>{r.dealer_id}</td>
                 <td className="fw-semibold">{r.dealer_name}</td>
+                <td>{r.dealer_company_name||<span className="text-muted">—</span>}</td>
                 <td>{r.dealer_code||<span className="text-muted">—</span>}</td>
                 <td>{r.dealer_phone||<span className="text-muted">—</span>}</td>
                 <td>{r.dealer_email||<span className="text-muted">—</span>}</td>
@@ -141,7 +143,9 @@ function App(){
             <div className="row g-3">
               <div className="col-md-6"><label className="form-label fw-semibold">Dealer Name <span className="text-danger">*</span></label>
                 <input className="form-control" value={form.dealer_name} onChange={e=>setForm({...form,dealer_name:e.target.value})} required/></div>
-              <div className="col-md-6"><label className="form-label fw-semibold">Code</label>
+              <div className="col-md-6"><label className="form-label fw-semibold">Dealer Company Name</label>
+                <input className="form-control" value={form.dealer_company_name} onChange={e=>setForm({...form,dealer_company_name:e.target.value})}/></div>
+              <div className="col-md-6"><label className="form-label fw-semibold">Dealer Code</label>
                 <input className="form-control" value={form.dealer_code} onChange={e=>setForm({...form,dealer_code:e.target.value})}/></div>
               <div className="col-md-6"><label className="form-label fw-semibold">Phone</label>
                 <input className="form-control" value={form.dealer_phone} onChange={e=>setForm({...form,dealer_phone:e.target.value})}/></div>

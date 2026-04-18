@@ -103,7 +103,7 @@ function App(){
           <div className="modal-body">
             <div className="row g-3">
               <div className="col-12"><label className="form-label fw-semibold">Role Name <span className="text-danger">*</span></label>
-                <input className="form-control text-uppercase" value={form.role_name} onChange={e=>setForm({...form,role_name:e.target.value.toUpperCase()})} required placeholder="e.g. MANAGER"/></div>
+                <input className="form-control text-uppercase" value={form.role_name} onChange={e=>setForm({...form,role_name:e.target.value.toUpperCase()})} required placeholder="e.g. MANAGER" disabled={!!editId}/></div>
               <div className="col-12"><label className="form-label fw-semibold">Description</label>
                 <textarea className="form-control" rows="3" value={form.role_desc} onChange={e=>setForm({...form,role_desc:e.target.value})} placeholder="Role description…"/></div>
             </div>

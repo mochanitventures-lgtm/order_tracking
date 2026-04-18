@@ -1,5 +1,5 @@
-require('dotenv').config();
 const pool = require('./db');
+const { getSafeDbConfig } = require('./config/database');
 
 async function findAndQuery(tableName) {
   // search for the table across schemas
@@ -22,10 +22,7 @@ async function findAndQuery(tableName) {
 
 async function run() {
   console.log('Using DB config:', {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    database: process.env.DB_NAME,
+    ...getSafeDbConfig(),
   });
 
   try {

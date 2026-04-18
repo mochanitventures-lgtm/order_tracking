@@ -36,6 +36,24 @@ app.use((req, res, next) => {
   next();
 });
 
+// Public access policy:
+// - Unauthenticated users can access only signin (and health/static assets)
+// - Any other page route redirects to /signin
+app.use((req, res, next) => {
+  const hasSessionUser = !!(req.session && req.session.user);
+  if (hasSessionUser) return next();
+
+  const pathName = req.path || '/';
+  const isApiRoute = pathName.startsWith('/api/');
+  const isPublicRoute = pathName === '/' || pathName === '/signin' || pathName === '/health' || pathName === '/favicon.ico';
+
+  if (!isApiRoute && req.method === 'GET' && !isPublicRoute) {
+    return res.redirect('/signin');
+  }
+
+  return next();
+});
+
 app.use('/', authRoutes);
 app.use('/', productRoutes);
 app.use('/', locationRoutes);

@@ -62,7 +62,7 @@ function ActiveSessions() {
 
   function exportExcel() {
     const data = rows.map(r => ({
-      'Audit ID': r.audit_id, 'User ID': r.user_id, 'Username': r.username,
+      'User ID': r.user_id, 'Username': r.username,
       'Email': r.email, 'Mobile': r.mobile, 'Role': r.role,
       'Login Method': r.login_method,
       'Login At': r.login_at ? new Date(r.login_at).toLocaleString('en-IN') : '',
@@ -102,7 +102,7 @@ function ActiveSessions() {
                   </thead>
                   <tbody>
                     {rows.map((r, i) => (
-                      <tr key={r.audit_id}>
+                      <tr key={r.audit_id || `${r.user_id || 'u'}-${r.login_at || i}-${i}`}>
                         <td className="text-muted small">{i + 1}</td>
                         <td className="fw-semibold">{r.username || '—'}</td>
                         <td className="small">{r.email || '—'}</td>
@@ -163,7 +163,7 @@ function LoginReport() {
 
   function exportExcel() {
     const data = rows.map(r => ({
-      'Audit ID': r.audit_id, 'Username': r.username, 'Email': r.email,
+      'Username': r.username, 'Email': r.email,
       'Mobile': r.mobile, 'Role': r.role, 'Login Method': r.login_method,
       'Login Status': r.login_status,
       'Login At':  r.login_at  ? new Date(r.login_at).toLocaleString('en-IN')  : '',
@@ -262,7 +262,7 @@ function LoginReport() {
               </thead>
               <tbody>
                 {rows.map((r, i) => (
-                  <tr key={r.audit_id} className={r.login_status === 'FAILED' ? 'table-danger bg-opacity-25' : ''}>
+                  <tr key={r.audit_id || `${r.user_id || 'u'}-${r.login_at || i}-${i}`} className={r.login_status === 'FAILED' ? 'table-danger bg-opacity-25' : ''}>
                     <td className="text-muted small">{i + 1}</td>
                     <td className="fw-semibold">{r.username || '—'}</td>
                     <td className="small">{r.email || '—'}</td>
