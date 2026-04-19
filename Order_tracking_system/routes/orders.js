@@ -27,32 +27,32 @@ function toOrderShape(row) {
     order_id:                   row.order_id,
     dealer_id:                  row.dealer_id,
     dealer_name:                row.dealer_name || null,
-    product_name:               row.product_name,
-    quantity:                   row.quantity,
-    unit:                       row.unit || 'MT',
-    party_name:                 row.party_name || null,
-    delivery_address:           row.delivery_address || null,
-    delivery_location:          row.delivery_address || null,
-    contact_number:             row.contact_number || null,
-    loading_type:               row.loading_type || null,
-    preferred_loading_location: row.preferred_loading_location || null,
-    remarks:                    row.remarks || '',
+    product_name:               row.product_name || row.product_id,
+    quantity:                   row.order_quantity,
+    unit:                       'MT',
+    party_name:                 null,
+    delivery_address:           null,
+    delivery_location:          null,
+    contact_number:             null,
+    loading_type:               null,
+    preferred_loading_location: null,
+    remarks:                    '',
     order_status:               row.order_status,
-    on_hold_by:                 row.on_hold_by || null,
-    on_hold_reason:             row.on_hold_reason || null,
+    on_hold_by:                 null,
+    on_hold_reason:             null,
     order_date:                 row.order_date,
     dispatch:                   null,
   };
   if (row.dispatch_id) {
     order.dispatch = {
       dispatch_id:       row.dispatch_id,
-      vehicle_no:        row.vehicle_no || null,
+      vehicle_no:        row.dispatch_vehicle_number || null,
       driver_name:       row.driver_name || null,
       driver_phone:      row.driver_phone || null,
-      dispatch_date:     row.dispatch_date || null,
-      dispatch_status:   row.dispatch_status || null,
-      expected_delivery: row.expected_delivery || null,
-      actual_delivery:   row.actual_delivery || null,
+      dispatch_date:     row.created_at || null,
+      dispatch_status:   null,
+      expected_delivery: null,
+      actual_delivery:   null,
     };
   }
   return order;
@@ -79,11 +79,10 @@ async function fetchOrders({ dealerId, startDate, endDate }) {
   const sql = `
     SELECT o.*,
            d.dealer_name,
-           dis.dispatch_id, dis.vehicle_no, dis.driver_name, dis.driver_phone,
-           dis.dispatch_date, dis.dispatch_status, dis.expected_delivery, dis.actual_delivery
-    FROM odts.orders o
+           od.dispatch_id, od.dispatch_vehicle_number, od.driver_id, od.created_at
+    FROM odts.dealer_orders o
     LEFT JOIN odts.dealers d  ON d.dealer_id  = o.dealer_id
-    LEFT JOIN odts.dispatches dis ON dis.order_id = o.order_id
+    LEFT JOIN odts.order_dispatch od ON od.order_id = o.order_id
     ${where}
     ORDER BY o.order_date DESC
   `;
@@ -139,12 +138,12 @@ router.get('/api/dealer/orders/by-driver/:phone', ensureDealer, async (req, res)
     const phone = String(req.params.phone || '').trim();
     const result = await pool.query(`
       SELECT o.*, d.dealer_name,
-             dis.dispatch_id, dis.vehicle_no, dis.driver_name, dis.driver_phone,
-             dis.dispatch_date, dis.dispatch_status, dis.expected_delivery, dis.actual_delivery
-      FROM odts.orders o
+             od.dispatch_id, od.dispatch_vehicle_number, od.driver_id, od.created_at
+      FROM odts.dealer_orders o
       LEFT JOIN odts.dealers d ON d.dealer_id = o.dealer_id
-      INNER JOIN odts.dispatches dis ON dis.order_id = o.order_id AND dis.driver_phone = $1
-    `, [phone]);
+      INNER JOIN odts.order_dispatch od ON od.order_id = o.order_id
+      WHERE od.driver_id IS NOT NULL
+    `, []);
     res.json(result.rows.map(toOrderShape));
   } catch (e) {
     console.error(e);
@@ -157,11 +156,10 @@ router.get('/api/dealer/orders/:id', ensureDealer, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT o.*, d.dealer_name,
-             dis.dispatch_id, dis.vehicle_no, dis.driver_name, dis.driver_phone,
-             dis.dispatch_date, dis.dispatch_status, dis.expected_delivery, dis.actual_delivery
-      FROM odts.orders o
+             od.dispatch_id, od.dispatch_vehicle_number, od.driver_id, od.created_at
+      FROM odts.dealer_orders o
       LEFT JOIN odts.dealers d  ON d.dealer_id  = o.dealer_id
-      LEFT JOIN odts.dispatches dis ON dis.order_id = o.order_id
+      LEFT JOIN odts.order_dispatch od ON od.order_id = o.order_id
       WHERE o.order_id = $1
     `, [parseInt(req.params.id)]);
     if (!result.rows.length) return res.status(404).json({ error: 'Order not found' });
@@ -174,15 +172,11 @@ router.get('/api/dealer/orders/:id', ensureDealer, async (req, res) => {
 
 // POST /api/dealer/orders – place a new order
 router.post('/api/dealer/orders', ensureDealer, async (req, res) => {
-  const {
-    product_name, quantity, party_name, delivery_address,
-    contact_number, loading_type, preferred_loading_location,
-    unit, remarks,
-  } = req.body;
+  const { product_id, quantity } = req.body;
 
-  if (!product_name || !quantity || !party_name || !delivery_address || !contact_number || !loading_type || !preferred_loading_location) {
+  if (!product_id || !quantity) {
     return res.status(400).json({
-      error: 'Product, quantity, ship to party, delivery address, contact number, loading type and preferred loading location are required'
+      error: 'Product ID and quantity are required'
     });
   }
 
@@ -191,22 +185,15 @@ router.post('/api/dealer/orders', ensureDealer, async (req, res) => {
 
   try {
     const result = await pool.query(`
-      INSERT INTO odts.orders
-        (dealer_id, product_name, quantity, unit, party_name, delivery_address,
-         contact_number, loading_type, preferred_loading_location, remarks, order_status, order_date)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'ORDER_PLACED',NOW())
+      INSERT INTO odts.dealer_orders
+        (dealer_id, product_id, order_quantity, order_status, order_date, created_by, created_at)
+      VALUES ($1, $2, $3, 'ORDER_PLACED', NOW(), $4, NOW())
       RETURNING *
     `, [
       dealer_id,
-      String(product_name).trim(),
+      parseInt(product_id, 10),
       parseInt(quantity, 10),
-      unit || 'MT',
-      String(party_name).trim(),
-      String(delivery_address).trim(),
-      String(contact_number).trim(),
-      loading_type,
-      preferred_loading_location,
-      remarks || '',
+      req.session.user.user_id,
     ]);
     res.status(201).json(toOrderShape({ ...result.rows[0], dealer_name: req.session.user.username }));
   } catch (e) {
@@ -221,38 +208,23 @@ router.patch('/api/dealer/orders/:id/status', ensureDealer, async (req, res) => 
     const { status, reason } = req.body;
     const requesterRole = req.session.user.role;
 
-    const existing = await pool.query('SELECT * FROM odts.orders WHERE order_id = $1', [parseInt(req.params.id)]);
+    const existing = await pool.query('SELECT * FROM odts.dealer_orders WHERE order_id = $1', [parseInt(req.params.id)]);
     if (!existing.rows.length) return res.status(404).json({ error: 'Order not found' });
     const order = existing.rows[0];
-
-    // Only dealer can reopen an order they put on hold
-    if (order.order_status === 'ON_HOLD' && order.on_hold_by === 'DEALER' && requesterRole !== 'DEALER')
-      return res.status(403).json({ error: 'This order was put on hold by the dealer. Only the dealer can reopen it.' });
-
-    // Dealers can only toggle ON_HOLD ↔ ORDER_PLACED
-    if (requesterRole === 'DEALER' && !['ON_HOLD', 'ORDER_PLACED'].includes(status))
-      return res.status(403).json({ error: 'Dealers can only put orders on hold or reopen them.' });
 
     const allowed = VALID_TRANSITIONS[order.order_status] || [];
     if (!allowed.includes(status))
       return res.status(400).json({
-        error: `Cannot move order from "${order.order_status}" to "${status}". Orders that are Accepted or Dispatched cannot be put On Hold.`
+        error: `Cannot move order from "${order.order_status}" to "${status}".`
       });
 
-    const resetDate = status === 'ORDER_PLACED' && requesterRole === 'DEALER';
-    const on_hold_by     = status === 'ON_HOLD' ? requesterRole : null;
-    const on_hold_reason = status === 'ON_HOLD' ? (reason || null) : null;
-
     const updated = await pool.query(`
-      UPDATE odts.orders SET
-        order_status   = $1,
-        on_hold_by     = $2,
-        on_hold_reason = $3,
-        order_date     = CASE WHEN $4 THEN NOW() ELSE order_date END,
-        updated_at     = NOW()
-      WHERE order_id = $5
+      UPDATE odts.dealer_orders SET
+        order_status = $1,
+        updated_at   = NOW()
+      WHERE order_id = $2
       RETURNING *
-    `, [status, on_hold_by, on_hold_reason, resetDate, parseInt(req.params.id)]);
+    `, [status, parseInt(req.params.id)]);
 
     res.json(toOrderShape({ ...updated.rows[0], dealer_name: req.session.user.username }));
   } catch (e) {

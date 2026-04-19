@@ -476,3 +476,21 @@ FROM dealer_data;
 
 commit;
 
+WITH dealer_rn AS (
+    SELECT 
+        dealer_id,
+        ROW_NUMBER() OVER (ORDER BY dealer_id) AS rn
+    FROM odts.dealers
+),
+user_rn AS (
+    SELECT 
+        user_id,
+        ROW_NUMBER() OVER (ORDER BY user_id) AS rn
+    FROM odts.users
+)
+UPDATE odts.users u
+SET dealer_id = d.dealer_id
+FROM user_rn ur
+JOIN dealer_rn d ON ur.rn = d.rn
+WHERE u.user_id = ur.user_id;
+commit;

@@ -2,36 +2,49 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-const auditColCache = new Map();
-
-async function getAuditCol(candidates) {
-  const key = candidates.join('|');
-  if (auditColCache.has(key)) return auditColCache.get(key);
-
-  const r = await pool.query(
-    `SELECT column_name
-       FROM information_schema.columns
-      WHERE table_schema = 'odts'
-        AND table_name = 'user_login_audit'
-        AND column_name = ANY($1::text[])
-      ORDER BY array_position($1::text[], column_name)
-      LIMIT 1`,
-    [candidates]
-  );
-
-  const col = r.rows[0]?.column_name || null;
-  auditColCache.set(key, col);
-  return col;
-}
-
-function pick(col, alias, fallback = 'NULL') {
-  return col ? `${col} AS ${alias}` : `${fallback} AS ${alias}`;
-}
-
 function ensureAdmin(req, res, next) {
   if (req.session && req.session.user && req.session.user.role === 'ADMIN') return next();
   return res.status(403).send('Forbidden – Admin only');
 }
+
+// Common SELECT projection used in both active-sessions and login-report.
+// For DEALER role → pull name/phone/email from dealers table.
+// For all other roles → pull from users table.
+const USER_INFO_SELECT = `
+  a.login_audit_id                                              AS audit_id,
+  a.login_user_id                                              AS user_id,
+  CASE WHEN ur.role_name = 'DEALER'
+       THEN d.dealer_name
+       ELSE u.user_name
+  END                                                          AS username,
+  CASE WHEN ur.role_name = 'DEALER'
+       THEN d.dealer_email
+       ELSE u.user_email
+  END                                                          AS email,
+  CASE WHEN ur.role_name = 'DEALER'
+       THEN d.dealer_phone
+       ELSE u.user_phone
+  END                                                          AS mobile,
+  COALESCE(ur.role_name, 'UNKNOWN')                            AS role,
+  u.user_login_name                                            AS login_name,
+  CASE WHEN ur.role_name = 'DEALER' THEN d.dealer_code
+       ELSE NULL END                                           AS dealer_code,
+  CASE WHEN ur.role_name = 'DEALER' THEN d.dealer_company_name
+       ELSE NULL END                                           AS dealer_company_name,
+  a.login_method,
+  a.login_status,
+  a.login_at,
+  a.logout_at,
+  a.login_ip_address                                           AS ip_address,
+  a.login_is_active
+`;
+
+const AUDIT_JOINS = `
+  FROM odts.user_login_audit a
+  LEFT JOIN odts.users       u  ON u.user_id      = a.login_user_id
+  LEFT JOIN odts.user_roles  ur ON ur.role_id     = u.user_role_id
+  LEFT JOIN odts.dealers     d  ON d.dealer_id    = u.dealer_id
+`;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 router.get('/admin/sessions', ensureAdmin, (req, res) => {
@@ -41,41 +54,12 @@ router.get('/admin/sessions', ensureAdmin, (req, res) => {
 // ── API: currently active sessions ───────────────────────────────────────────
 router.get('/api/admin/active-sessions', ensureAdmin, async (req, res) => {
   try {
-    const auditIdCol = await getAuditCol(['audit_id', 'login_audit_id']);
-    const userIdCol = await getAuditCol(['login_user_id', 'user_id']);
-    const usernameCol = await getAuditCol(['login_username', 'username']);
-    const emailCol = await getAuditCol(['login_email', 'email']);
-    const mobileCol = await getAuditCol(['login_mobile', 'mobile']);
-    const roleCol = await getAuditCol(['login_role', 'role']);
-    const methodCol = await getAuditCol(['login_method']);
-    const loginAtCol = await getAuditCol(['login_at', 'created_at']);
-    const ipCol = await getAuditCol(['login_ip_address', 'ip_address']);
-    const userAgentCol = await getAuditCol(['login_user_agent', 'user_agent']);
-    const sessionCol = await getAuditCol(['login_session_id', 'session_id']);
-    const activeCol = await getAuditCol(['login_is_active', 'is_active']);
-    const logoutAtCol = await getAuditCol(['logout_at', 'login_logout_at']);
-
-    const activeWhere = activeCol
-      ? `${activeCol} = TRUE`
-      : (logoutAtCol ? `${logoutAtCol} IS NULL` : 'TRUE');
-
-    const orderByCol = loginAtCol || auditIdCol || userIdCol;
-
     const result = await pool.query(
-      `SELECT ${pick(auditIdCol, 'audit_id')},
-              ${pick(userIdCol, 'user_id')},
-              ${pick(usernameCol, 'username')},
-              ${pick(emailCol, 'email')},
-              ${pick(mobileCol, 'mobile')},
-              ${pick(roleCol, 'role')},
-              ${pick(methodCol, 'login_method')},
-              ${pick(loginAtCol, 'login_at')},
-              ${pick(ipCol, 'ip_address')},
-              ${pick(userAgentCol, 'user_agent')},
-              ${pick(sessionCol, 'session_id')}
-         FROM odts.user_login_audit
-        WHERE ${activeWhere}
-        ${orderByCol ? `ORDER BY ${orderByCol} DESC` : ''}`
+      `SELECT ${USER_INFO_SELECT},
+              EXTRACT(EPOCH FROM (NOW() - a.login_at))::int AS session_seconds
+       ${AUDIT_JOINS}
+       WHERE a.login_is_active = TRUE
+       ORDER BY a.login_at DESC`
     );
     res.json({ success: true, rows: result.rows });
   } catch (e) {
@@ -88,67 +72,36 @@ router.get('/api/admin/active-sessions', ensureAdmin, async (req, res) => {
 router.get('/api/admin/login-report', ensureAdmin, async (req, res) => {
   try {
     const { from, to, role, status } = req.query;
-    // default: today
     const fromDate = from || new Date().toISOString().slice(0, 10);
     const toDate   = to   || new Date().toISOString().slice(0, 10);
 
-    const auditIdCol = await getAuditCol(['audit_id', 'login_audit_id']);
-    const userIdCol = await getAuditCol(['login_user_id', 'user_id']);
-    const usernameCol = await getAuditCol(['login_username', 'username']);
-    const emailCol = await getAuditCol(['login_email', 'email']);
-    const mobileCol = await getAuditCol(['login_mobile', 'mobile']);
-    const roleCol = await getAuditCol(['login_role', 'role']);
-    const methodCol = await getAuditCol(['login_method']);
-    const statusCol = await getAuditCol(['login_status']);
-    const loginAtCol = await getAuditCol(['login_at', 'created_at']);
-    const logoutAtCol = await getAuditCol(['logout_at', 'login_logout_at']);
-    const ipCol = await getAuditCol(['login_ip_address', 'ip_address']);
-    const userAgentCol = await getAuditCol(['login_user_agent', 'user_agent']);
+    const conditions = [
+      `a.login_at >= $1::date`,
+      `a.login_at <  ($2::date + interval '1 day')`
+    ];
+    const params = [fromDate, toDate];
+    let idx = 3;
 
-    const conditions = [];
-    const params = [];
-    let idx = 1;
-
-    if (loginAtCol) {
-      conditions.push(`${loginAtCol} >= $${idx++}::date`);
-      params.push(fromDate);
-      conditions.push(`${loginAtCol} < ($${idx++}::date + interval '1 day')`);
-      params.push(toDate);
-    }
-
-    if (role && role !== 'ALL' && roleCol) {
-      conditions.push(`${roleCol} = $${idx++}`);
+    if (role && role !== 'ALL') {
+      conditions.push(`ur.role_name = $${idx++}`);
       params.push(role);
     }
-    if (status && status !== 'ALL' && statusCol) {
-      conditions.push(`${statusCol} = $${idx++}`);
+    if (status && status !== 'ALL') {
+      conditions.push(`a.login_status = $${idx++}`);
       params.push(status);
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const sessionSeconds = (loginAtCol && logoutAtCol)
-      ? `CASE WHEN ${logoutAtCol} IS NOT NULL
-          THEN EXTRACT(EPOCH FROM (${logoutAtCol} - ${loginAtCol}))::int
-          ELSE NULL END`
-      : 'NULL::int';
+    const where = `WHERE ${conditions.join(' AND ')}`;
 
     const sql = `
-      SELECT ${pick(auditIdCol, 'audit_id')},
-             ${pick(userIdCol, 'user_id')},
-             ${pick(usernameCol, 'username')},
-             ${pick(emailCol, 'email')},
-             ${pick(mobileCol, 'mobile')},
-             ${pick(roleCol, 'role')},
-             ${pick(methodCol, 'login_method')},
-             ${pick(statusCol, 'login_status', `'SUCCESS'`)},
-             ${pick(loginAtCol, 'login_at')},
-             ${pick(logoutAtCol, 'logout_at')},
-             ${pick(ipCol, 'ip_address')},
-             ${pick(userAgentCol, 'user_agent')},
-             ${sessionSeconds} AS session_seconds
-        FROM odts.user_login_audit
-       ${where}
-       ${loginAtCol ? `ORDER BY ${loginAtCol} DESC` : ''}`;
+      SELECT ${USER_INFO_SELECT},
+             CASE WHEN a.logout_at IS NOT NULL
+                  THEN EXTRACT(EPOCH FROM (a.logout_at - a.login_at))::int
+                  ELSE NULL
+             END AS session_seconds
+      ${AUDIT_JOINS}
+      ${where}
+      ORDER BY a.login_at DESC`;
 
     const result = await pool.query(sql, params);
     res.json({ success: true, rows: result.rows });
@@ -161,13 +114,13 @@ router.get('/api/admin/login-report', ensureAdmin, async (req, res) => {
 // ── API: available roles for filter dropdown ──────────────────────────────────
 router.get('/api/admin/audit-roles', ensureAdmin, async (req, res) => {
   try {
-    const roleCol = await getAuditCol(['login_role', 'role']);
-    if (!roleCol) return res.json({ success: true, roles: [] });
     const result = await pool.query(
-      `SELECT DISTINCT ${roleCol} AS role
-         FROM odts.user_login_audit
-        WHERE ${roleCol} IS NOT NULL
-        ORDER BY ${roleCol}`
+      `SELECT DISTINCT ur.role_name AS role
+         FROM odts.user_login_audit a
+         LEFT JOIN odts.users      u  ON u.user_id  = a.login_user_id
+         LEFT JOIN odts.user_roles ur ON ur.role_id = u.user_role_id
+        WHERE ur.role_name IS NOT NULL
+        ORDER BY ur.role_name`
     );
     res.json({ success: true, roles: result.rows.map(r => r.role) });
   } catch (e) {

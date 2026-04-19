@@ -62,11 +62,18 @@ function ActiveSessions() {
 
   function exportExcel() {
     const data = rows.map(r => ({
-      'User ID': r.user_id, 'Username': r.username,
-      'Email': r.email, 'Mobile': r.mobile, 'Role': r.role,
+      'User ID': r.user_id,
+      'Login Name': r.login_name,
+      'Name': r.username,
+      'Email': r.email,
+      'Mobile': r.mobile,
+      'Role': r.role,
+      'Dealer Code': r.dealer_code || '',
+      'Dealer Company': r.dealer_company_name || '',
       'Login Method': r.login_method,
       'Login At': r.login_at ? new Date(r.login_at).toLocaleString('en-IN') : '',
-      'IP Address': r.ip_address, 'Browser/Device': r.user_agent
+      'Session (so far)': fmtSecs(r.session_seconds),
+      'IP Address': r.ip_address
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -95,24 +102,35 @@ function ActiveSessions() {
                 <table className="table table-hover table-sm mb-0 align-middle">
                   <thead className="table-light">
                     <tr>
-                      <th>#</th><th>Username</th><th>Email</th><th>Mobile</th>
-                      <th>Role</th><th>Method</th><th>Login At</th>
-                      <th>IP Address</th><th>Browser / Device</th>
+                      <th>#</th>
+                      <th>Login Name</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Mobile</th>
+                      <th>Role</th>
+                      <th>Dealer Code</th>
+                      <th>Company</th>
+                      <th>Method</th>
+                      <th>Login At</th>
+                      <th>Duration</th>
+                      <th>IP Address</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r, i) => (
                       <tr key={r.audit_id || `${r.user_id || 'u'}-${r.login_at || i}-${i}`}>
                         <td className="text-muted small">{i + 1}</td>
+                        <td className="small text-monospace">{r.login_name || '—'}</td>
                         <td className="fw-semibold">{r.username || '—'}</td>
                         <td className="small">{r.email || '—'}</td>
                         <td className="small">{r.mobile || '—'}</td>
                         <td>{roleBadge(r.role)}</td>
+                        <td className="small">{r.dealer_code || '—'}</td>
+                        <td className="small">{r.dealer_company_name || '—'}</td>
                         <td>{methodBadge(r.login_method)}</td>
                         <td className="small">{fmtDt(r.login_at)}</td>
+                        <td className="small">{fmtSecs(r.session_seconds)}</td>
                         <td className="small text-monospace">{r.ip_address || '—'}</td>
-                        <td className="small text-muted" style={{maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                            title={r.user_agent}>{r.user_agent || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -163,13 +181,19 @@ function LoginReport() {
 
   function exportExcel() {
     const data = rows.map(r => ({
-      'Username': r.username, 'Email': r.email,
-      'Mobile': r.mobile, 'Role': r.role, 'Login Method': r.login_method,
+      'Login Name': r.login_name,
+      'Name': r.username,
+      'Email': r.email,
+      'Mobile': r.mobile,
+      'Role': r.role,
+      'Dealer Code': r.dealer_code || '',
+      'Dealer Company': r.dealer_company_name || '',
+      'Login Method': r.login_method,
       'Login Status': r.login_status,
       'Login At':  r.login_at  ? new Date(r.login_at).toLocaleString('en-IN')  : '',
       'Logout At': r.logout_at ? new Date(r.logout_at).toLocaleString('en-IN') : '',
       'Session Duration': fmtSecs(r.session_seconds),
-      'IP Address': r.ip_address, 'Browser/Device': r.user_agent
+      'IP Address': r.ip_address
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -252,22 +276,36 @@ function LoginReport() {
         )}
         {rows.length > 0 && (
           <div className="table-responsive">
-            <table className="table table-hover table-sm align-middle mb-0">
+              <table className="table table-hover table-sm align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>#</th><th>Username</th><th>Email</th><th>Mobile</th>
-                  <th>Role</th><th>Method</th><th>Status</th>
-                  <th>Login At</th><th>Logout At</th><th>Duration</th><th>IP Address</th>
+                  <th>#</th>
+                  <th>Login Name</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Mobile</th>
+                  <th>Role</th>
+                  <th>Dealer Code</th>
+                  <th>Company</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                  <th>Login At</th>
+                  <th>Logout At</th>
+                  <th>Duration</th>
+                  <th>IP Address</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={r.audit_id || `${r.user_id || 'u'}-${r.login_at || i}-${i}`} className={r.login_status === 'FAILED' ? 'table-danger bg-opacity-25' : ''}>
                     <td className="text-muted small">{i + 1}</td>
+                    <td className="small text-monospace">{r.login_name || '—'}</td>
                     <td className="fw-semibold">{r.username || '—'}</td>
                     <td className="small">{r.email || '—'}</td>
                     <td className="small">{r.mobile || '—'}</td>
                     <td>{roleBadge(r.role)}</td>
+                    <td className="small">{r.dealer_code || '—'}</td>
+                    <td className="small">{r.dealer_company_name || '—'}</td>
                     <td>{methodBadge(r.login_method)}</td>
                     <td>{statusBadge(r.login_status)}</td>
                     <td className="small">{fmtDt(r.login_at)}</td>
