@@ -7,7 +7,7 @@
       <div class="welcome-banner d-flex align-items-center gap-3">
         <div class="avatar-circle">🏬</div>
         <div>
-          <h4 class="mb-0 fw-700 text-white">Welcome, <%= user.username %>!</h4>
+          <h4 class="mb-0 fw-700 text-white">Welcome, <%= user.user_login_name || user.username %>!</h4>
           <span class="role-tag"><%= user.role %></span>
         </div>
       </div>
@@ -63,7 +63,7 @@
       <div class="welcome-banner d-flex align-items-center gap-3">
         <div class="avatar-circle">🛡️</div>
         <div>
-          <h4 class="mb-0 fw-700 text-white">Welcome, <%= user.username %>!</h4>
+          <h4 class="mb-0 fw-700 text-white">Welcome, <%= user.user_login_name || user.username %>!</h4>
           <span class="role-tag"><%= user.role %></span>
         </div>
       </div>
@@ -158,7 +158,7 @@
       <div class="card text-center py-5">
         <div class="card-body">
           <div style="font-size:3rem" class="mb-3">👋</div>
-          <h4 class="fw-600">Welcome, <%= user.username %></h4>
+          <h4 class="fw-600">Welcome, <%= user.user_login_name || user.username %></h4>
           <p class="text-muted">Role: <span class="badge bg-secondary"><%= user.role %></span></p>
           <hr/>
           <p class="text-muted small">Your dashboard is being set up. Please contact the admin.</p>

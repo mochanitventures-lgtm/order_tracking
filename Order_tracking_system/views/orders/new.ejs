@@ -39,7 +39,9 @@
 
           <div class="col-md-6">
             <label for="party_name" class="form-label fw-semibold">Ship to Party</label>
-            <input id="party_name" name="party_name" type="text" class="form-control" placeholder="Enter party name" required>
+            <select id="party_name" name="party_name" class="form-select" required>
+              <option value="">Loading parties…</option>
+            </select>
           </div>
 
           <div class="col-md-6">
@@ -94,6 +96,28 @@
 </div>
 
 <script>
+  // Populate Ship to Party dropdown
+  (async () => {
+    const sel = document.getElementById('party_name');
+    try {
+      const res = await fetch('/api/dealer/parties');
+      const parties = await res.json();
+      sel.innerHTML = '<option value="">Select Party</option>';
+      if (parties.length === 0) {
+        sel.innerHTML = '<option value="">No parties available</option>';
+      } else {
+        parties.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.party_company_name;
+          opt.textContent = p.party_company_name;
+          sel.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      sel.innerHTML = '<option value="">Failed to load parties</option>';
+    }
+  })();
+
   const form = document.getElementById('new-order-form');
   const submitBtn = document.getElementById('submit-btn');
   const alertBox = document.getElementById('form-alert');

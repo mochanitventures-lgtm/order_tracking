@@ -4,6 +4,23 @@
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
+    "": {
+      "name": "order-tracking-system",
+      "version": "0.1.0",
+      "license": "ISC",
+      "dependencies": {
+        "bcrypt": "^5.1.0",
+        "cors": "^2.8.6",
+        "dotenv": "^17.4.1",
+        "ejs": "^3.1.9",
+        "express": "^4.22.1",
+        "express-session": "^1.17.4",
+        "pg": "^8.20.0"
+      },
+      "devDependencies": {
+        "nodemon": "^2.0.22"
+      }
+    },
     "node_modules/@mapbox/node-pre-gyp": {
       "version": "1.0.11",
       "resolved": "https://registry.npmjs.org/@mapbox/node-pre-gyp/-/node-pre-gyp-1.0.11.tgz",
@@ -191,9 +208,9 @@
       }
     },
     "node_modules/brace-expansion": {
-      "version": "2.1.0",
-      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.1.0.tgz",
-      "integrity": "sha512-TN1kCZAgdgweJhWWpgKYrQaMNHcDULHkWwQIspdtjV4Y5aurRdZpjAqn6yX3FPqTA9ngHCc4hJxMAMgGfve85w==",
+      "version": "2.0.3",
+      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.0.3.tgz",
+      "integrity": "sha512-MCV/fYJEbqx68aE58kv2cA/kiky1G8vux3OR6/jbS+jIMe/6fJWa0DTzJU7dqijOWYwHi1t29FlfYI9uytqlpA==",
       "license": "MIT",
       "dependencies": {
         "balanced-match": "^1.0.0"
@@ -402,9 +419,9 @@
       }
     },
     "node_modules/dotenv": {
-      "version": "17.4.2",
-      "resolved": "https://registry.npmjs.org/dotenv/-/dotenv-17.4.2.tgz",
-      "integrity": "sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==",
+      "version": "17.4.1",
+      "resolved": "https://registry.npmjs.org/dotenv/-/dotenv-17.4.1.tgz",
+      "integrity": "sha512-k8DaKGP6r1G30Lx8V4+pCsLzKr8vLmV2paqEj1Y55GdAgJuIqpRp5FfajGF8KtwMxCz9qJc6wUIJnm053d/WCw==",
       "license": "BSD-2-Clause",
       "engines": {
         "node": ">=12"
@@ -782,9 +799,9 @@
       }
     },
     "node_modules/glob/node_modules/brace-expansion": {
-      "version": "1.1.14",
-      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.14.tgz",
-      "integrity": "sha512-MWPGfDxnyzKU7rNOW9SP/c50vi3xrmrua/+6hfPbCS2ABNWfx24vPidzvC7krjU/RTo235sV776ymlsMtGKj8g==",
+      "version": "1.1.13",
+      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.13.tgz",
+      "integrity": "sha512-9ZLprWS6EENmhEOpjCYW2c8VkmOvckIJZfkr7rBW6dObmfgJ/L1GpSYW5Hpo9lDz4D1+n0Ckz8rU7FwHDQiG/w==",
       "license": "MIT",
       "dependencies": {
         "balanced-match": "^1.0.0",
@@ -844,9 +861,9 @@
       "license": "ISC"
     },
     "node_modules/hasown": {
-      "version": "2.0.3",
-      "resolved": "https://registry.npmjs.org/hasown/-/hasown-2.0.3.tgz",
-      "integrity": "sha512-ej4AhfhfL2Q2zpMmLo7U1Uv9+PyhIZpgQLGT1F9miIGmiCJIoCgSmczFdrc97mWT4kVY72KA+WnnhJ5pghSvSg==",
+      "version": "2.0.2",
+      "resolved": "https://registry.npmjs.org/hasown/-/hasown-2.0.2.tgz",
+      "integrity": "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==",
       "license": "MIT",
       "dependencies": {
         "function-bind": "^1.1.2"
@@ -1250,9 +1267,9 @@
       }
     },
     "node_modules/nodemon/node_modules/brace-expansion": {
-      "version": "1.1.14",
-      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.14.tgz",
-      "integrity": "sha512-MWPGfDxnyzKU7rNOW9SP/c50vi3xrmrua/+6hfPbCS2ABNWfx24vPidzvC7krjU/RTo235sV776ymlsMtGKj8g==",
+      "version": "1.1.13",
+      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.13.tgz",
+      "integrity": "sha512-9ZLprWS6EENmhEOpjCYW2c8VkmOvckIJZfkr7rBW6dObmfgJ/L1GpSYW5Hpo9lDz4D1+n0Ckz8rU7FwHDQiG/w==",
       "dev": true,
       "license": "MIT",
       "dependencies": {

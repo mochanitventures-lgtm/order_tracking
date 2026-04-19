@@ -170,6 +170,27 @@ router.get('/api/dealer/orders/:id', ensureDealer, async (req, res) => {
   }
 });
 
+// GET /api/dealer/parties – parties linked to the logged-in dealer
+router.get('/api/dealer/parties', ensureDealer, async (req, res) => {
+  try {
+    const dealer_id = req.session.user.dealer_id;
+    if (!dealer_id) return res.json([]);
+    const result = await pool.query(
+      `SELECT dp.party_id, dp.party_code, dp.party_company_name, dp.party_name,
+              dp.party_address, dp.party_phone
+         FROM odts.dealer_party dp
+         JOIN odts.dealers d ON d.dealer_code = dp.dealer_code
+        WHERE d.dealer_id = $1
+          AND COALESCE(dp.party_is_active_flag, TRUE) = TRUE
+        ORDER BY dp.party_company_name`,
+      [dealer_id]
+    );
+    res.json(result.rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/dealer/orders – place a new order
 router.post('/api/dealer/orders', ensureDealer, async (req, res) => {
   const { product_id, quantity } = req.body;
