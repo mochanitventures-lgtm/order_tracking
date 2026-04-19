@@ -1,0 +1,17 @@
+# Exclude node_modules — Beanstalk runs npm install automatically
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files (set these as Beanstalk env variables instead)
+.env
+
+# Dev/test files
+test-*.js
+scripts/
+server.pid
+
+# OS files
+.DS_Store
