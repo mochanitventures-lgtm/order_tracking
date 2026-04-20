@@ -189,6 +189,29 @@ CREATE TABLE IF NOT EXISTS "dealer_party" (
 );
 
 
+CREATE TABLE odts.code_reference (
+  code_type   VARCHAR(50),
+  code_label  VARCHAR(50),
+  code        VARCHAR(20) PRIMARY KEY,
+  code_desc   VARCHAR(250),
+  code_sort_order  INTEGER DEFAULT 0,
+  "created_by" INTEGER NOT NULL DEFAULT 0,
+	"created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	"updated_by" INTEGER NOT NULL DEFAULT 0,
+	"updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+alter table odts.dealer_orders
+drop column source_location_id;
+
+alter table odts.dealer_orders
+add party_id integer;
+
+alter table odts.dealer_orders
+add preferred_location_code VARCHAR(20);
+
+alter table odts.dealer_orders
+add load_type_code VARCHAR(20);
 
 ALTER TABLE "users"
 ADD FOREIGN KEY("user_role_id") REFERENCES "user_roles"("role_id")

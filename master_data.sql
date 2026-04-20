@@ -26,12 +26,27 @@ ALTER COLUMN product_id RESTART WITH 1;
 DELETE FROM odts.products;
 INSERT INTO odts.products (product_name, product_desc, product_is_active_flag)
 VALUES
-('GOLD', 'Premium grade product', TRUE),
-('POWER', 'High performance product', TRUE),
-('PLUS', 'Standard product', TRUE)
+('GOLD', 'High-performance premium cement engineered for superior strength, durability', TRUE),
+('SURAKSHAPOWER', 'Advanced cement designed for enhanced strength and structural safety.', TRUE),
+('C+', 'SReliable and cost-effective cement suited for general construction', TRUE)
 ON CONFLICT (product_name) DO NOTHING;
 SELECT * FROM odts.products;
 
+INSERT INTO odts.code_reference (code_type, code_label, code, code_desc, code_sort_order, created_by, created_at)
+VALUES
+  ('loading_type',     NULL,        'SLF_DOT',  'Self DOT (Dealer own truck)',  1, 1, NOW()),
+  ('loading_type',     NULL,        'CMP_TRN',  'Company Transport',            2, 1, NOW()),
+  ('loading_location', 'RAKE',      'RAK_CHA',  'Rake (Chaukhadi)',             1, 1, NOW()),
+  ('loading_location', 'RAKE',      'RAK_SHI',  'Rake (Shivpur)',               2, 1, NOW()),
+  ('loading_location', 'WAREHOUSE', 'WH_TAR',   'Warehouse (Tarna)',            3, 1, NOW()),
+  ('loading_location', 'WAREHOUSE', 'WH_GOE',   'Warehouse (Goenka)',           4, 1, NOW()),
+  ('loading_location', 'WAREHOUSE', 'WH_BHU',   'Warehouse (Bhupur)',           5, 1, NOW()),
+  ('loading_location', 'WAREHOUSE', 'WH_DAF',   'Warehouse (Dafi)',             6, 1, NOW()),
+  ('loading_location', 'WAREHOUSE', 'WH_OTH',   'Warehouse (Any other)',        7, 1, NOW()),
+  ('loading_location', 'SOW',       'SOW_BHA',  'SOW (Bhabhua)',                8, 1, NOW()),
+  ('loading_location', 'SOW',       'SOW_TEK',  'SOW (Tekaria)',                9, 1, NOW());
+
+  
 select * from odts.dealers;
 delete from odts.dealers;
 Insert into odts.dealers (dealer_code, dealer_company_name, dealer_address, dealer_phone, dealer_name,  created_by, created_at, updated_by, updated_at) values ( '9110032672','ADESH TRADERS','VARANASI',9415204148,'ANAND GUPTA',0, CURRENT_TIMESTAMP,0, CURRENT_TIMESTAMP);
