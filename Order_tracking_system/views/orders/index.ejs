@@ -21,7 +21,7 @@ const STATUS_CONFIG = {
   ORDER_PLACED: { color: 'warning',   text: 'Order Placed', icon: '🕐' },
   ACCEPTED:     { color: 'info',      text: 'Accepted',     icon: '✅' },
   DISPATCHED:   { color: 'primary',   text: 'Dispatched',   icon: '📦' },
-  ON_HOLD:      { color: 'secondary', text: 'On Hold',      icon: '⏸️' },
+  ON_HOLD:      { color: 'danger',    text: 'On Hold',      icon: '⏸️' },
 };
 
 const UNITS = ['MT', 'KG', 'NOS', 'PCS', 'TON'];
@@ -121,38 +121,66 @@ function DispatchModal({ order, onClose }) {
             {/* Order Info */}
             <h6 className="fw-bold text-muted mb-3 text-uppercase small">Order Information</h6>
             <div className="row g-3 mb-4">
-              <div className="col-md-4">
+              {/* Row 1: Product + Quantity */}
+              <div className="col-md-6">
                 <div className="p-3 bg-light rounded">
                   <div className="text-muted small">Product</div>
                   <div className="fw-semibold">{order.product_name}</div>
                 </div>
               </div>
-              <div className="col-md-4">
+              <div className="col-md-6">
                 <div className="p-3 bg-light rounded">
                   <div className="text-muted small">Quantity</div>
                   <div className="fw-semibold">{order.quantity} {order.unit}</div>
                 </div>
               </div>
+              {/* Row 2: Party Company Name + Party Phone + Party Address */}
               <div className="col-md-4">
                 <div className="p-3 bg-light rounded">
-                  <div className="text-muted small">Delivery Location</div>
-                  <div className="fw-semibold">{order.delivery_location}</div>
+                  <div className="text-muted small">Party Company Name</div>
+                  <div className="fw-semibold">{order.party_name || '—'}</div>
                 </div>
               </div>
               <div className="col-md-4">
+                <div className="p-3 bg-light rounded">
+                  <div className="text-muted small">Party Phone</div>
+                  <div className="fw-semibold">{order.party_phone || '—'}</div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="p-3 bg-light rounded">
+                  <div className="text-muted small">Party Address</div>
+                  <div className="fw-semibold">{order.party_address || '—'}</div>
+                </div>
+              </div>
+              {/* Row 3: Load Type + Preferred Loading Location */}
+              <div className="col-md-6">
+                <div className="p-3 bg-light rounded">
+                  <div className="text-muted small">Load Type</div>
+                  <div className="fw-semibold">{order.load_type_desc || '—'}</div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="p-3 bg-light rounded">
+                  <div className="text-muted small">Preferred Loading Location</div>
+                  <div className="fw-semibold">{order.preferred_location_desc || '—'}</div>
+                </div>
+              </div>
+              {/* Row 4: Order Date + Order Status */}
+              <div className="col-md-6">
                 <div className="p-3 bg-light rounded">
                   <div className="text-muted small">Order Date</div>
                   <div className="fw-semibold">{formatDateTime(order.order_date)}</div>
                 </div>
               </div>
-              <div className="col-md-4">
+              <div className="col-md-6">
                 <div className="p-3 bg-light rounded">
-                  <div className="text-muted small">Status</div>
+                  <div className="text-muted small">Order Status</div>
                   <div><StatusBadge status={order.order_status}/></div>
                 </div>
               </div>
               {order.remarks && (
-                <div className="col-md-4">
+                <div className="col-12">
                   <div className="p-3 bg-light rounded">
                     <div className="text-muted small">Remarks</div>
                     <div className="fw-semibold">{order.remarks}</div>
@@ -268,8 +296,11 @@ function DispatchModal({ order, onClose }) {
                 </div>
               </>
             ) : (
-              <div className="alert alert-info mt-2 mb-0">
-                <strong>Dispatch not yet initiated.</strong> Your order is being processed. Dispatch details will appear here once the order is confirmed and dispatched.
+              <div className={`alert mt-2 mb-0 ${order.order_status === 'ON_HOLD' ? 'alert-danger' : 'alert-info'}`}>
+                {order.order_status === 'ON_HOLD'
+                  ? <><strong>Dispatch not yet initiated.</strong> Your order is put on hold. Kindly un-hold your order so it can be further processed.</>
+                  : <><strong>Dispatch not yet initiated.</strong> Your order is being processed. Dispatch details will appear here once the order is confirmed and dispatched.</>
+                }
               </div>
             )}
           </div>
@@ -637,7 +668,9 @@ function App() {
                     {IS_ADMIN && <SortTh col="dealer_name">Dealer</SortTh>}
                     <SortTh col="product_name">Product</SortTh>
                     <SortTh col="quantity" style={{ width: 100 }}>Qty</SortTh>
-                    <SortTh col="delivery_location">Delivery Location</SortTh>
+                    <SortTh col="party_name">Party</SortTh>
+                    <SortTh col="load_type_desc">Load Type</SortTh>
+                    <SortTh col="preferred_location_desc">Pref. Location</SortTh>
                     <SortTh col="order_date" style={{ width: 110 }}>Order Date</SortTh>
                     <th style={{ width: 130, textAlign: 'center' }}>Status</th>
                     <th style={{ width: 120, textAlign: 'center' }}>Dispatch</th>
@@ -646,14 +679,16 @@ function App() {
                 </thead>
                 <tbody>
                   {sorted.length === 0 ? (
-                    <tr><td colSpan={IS_ADMIN ? 9 : 8} className="text-center text-muted py-4">No orders found</td></tr>
+                    <tr><td colSpan={IS_ADMIN ? 11 : 10} className="text-center text-muted py-4">No orders found</td></tr>
                   ) : sorted.map(o => (
                     <tr key={o.order_id}>
                       <td className="fw-semibold text-primary">#{o.order_id}</td>
                       {IS_ADMIN && <td className="text-muted small">{o.dealer_name || '—'}</td>}
                       <td>{o.product_name}</td>
                       <td>{o.quantity} {o.unit}</td>
-                      <td>{o.delivery_location}</td>
+                      <td>{o.party_name || <span className="text-muted">—</span>}</td>
+                      <td>{o.load_type_desc || <span className="text-muted">—</span>}</td>
+                      <td>{o.preferred_location_desc || <span className="text-muted">—</span>}</td>
                       <td>{formatDateTime(o.order_date)}</td>
                       <td className="text-center"><StatusBadge status={o.order_status} /></td>
                       <td className="text-center">

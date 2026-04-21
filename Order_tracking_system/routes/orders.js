@@ -27,16 +27,19 @@ function toOrderShape(row) {
     order_id:                   row.order_id,
     dealer_id:                  row.dealer_id,
     dealer_name:                row.dealer_name || null,
-    product_name:               row.product_name || row.product_id,
+    product_name:               row.product_name || String(row.product_id),
     quantity:                   row.order_quantity,
     unit:                       'MT',
-    party_name:                 null,
-    delivery_address:           null,
-    delivery_location:          null,
-    contact_number:             null,
-    loading_type:               null,
-    preferred_loading_location: null,
-    remarks:                    '',
+    party_id:                   row.party_id || null,
+    party_name:                 row.party_company_name || row.party_name_col || null,
+    party_phone:                row.party_phone || null,
+    party_address:              row.party_address || null,
+    load_type_code:             row.load_type_code || null,
+    load_type_desc:             row.load_type_desc || row.load_type_code || null,
+    preferred_location_code:    row.preferred_location_code || null,
+    preferred_location_desc:    row.preferred_location_desc || row.preferred_location_code || null,
+    delivery_location:          row.preferred_location_desc || row.preferred_location_code || null,
+    remarks:                    row.remarks || '',
     order_status:               row.order_status,
     on_hold_by:                 null,
     on_hold_reason:             null,
@@ -49,7 +52,7 @@ function toOrderShape(row) {
       vehicle_no:        row.dispatch_vehicle_number || null,
       driver_name:       row.driver_name || null,
       driver_phone:      row.driver_phone || null,
-      dispatch_date:     row.created_at || null,
+      dispatch_date:     row.dispatch_created_at || null,
       dispatch_status:   null,
       expected_delivery: null,
       actual_delivery:   null,
@@ -79,9 +82,17 @@ async function fetchOrders({ dealerId, startDate, endDate }) {
   const sql = `
     SELECT o.*,
            d.dealer_name,
-           od.dispatch_id, od.dispatch_vehicle_number, od.driver_id, od.created_at
+           p.product_name,
+           dp.party_company_name, dp.party_name AS party_name_col, dp.party_phone, dp.party_address,
+           lt.code_desc  AS load_type_desc,
+           pl.code_desc  AS preferred_location_desc,
+           od.dispatch_id, od.dispatch_vehicle_number, od.driver_id, od.created_at AS dispatch_created_at
     FROM odts.dealer_orders o
-    LEFT JOIN odts.dealers d  ON d.dealer_id  = o.dealer_id
+    LEFT JOIN odts.dealers d       ON d.dealer_id  = o.dealer_id
+    LEFT JOIN odts.products p      ON p.product_id = o.product_id
+    LEFT JOIN odts.dealer_party dp ON dp.party_id  = o.party_id
+    LEFT JOIN odts.code_reference lt ON lt.code_type = 'loading_type'     AND lt.code = o.load_type_code
+    LEFT JOIN odts.code_reference pl ON pl.code_type = 'loading_location' AND pl.code = o.preferred_location_code
     LEFT JOIN odts.order_dispatch od ON od.order_id = o.order_id
     ${where}
     ORDER BY o.order_date DESC
@@ -156,9 +167,17 @@ router.get('/api/dealer/orders/:id', ensureDealer, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT o.*, d.dealer_name,
-             od.dispatch_id, od.dispatch_vehicle_number, od.driver_id, od.created_at
+             p.product_name,
+             dp.party_company_name, dp.party_name AS party_name_col, dp.party_phone, dp.party_address,
+             lt.code_desc AS load_type_desc,
+             pl.code_desc AS preferred_location_desc,
+             od.dispatch_id, od.dispatch_vehicle_number, od.driver_id, od.created_at AS dispatch_created_at
       FROM odts.dealer_orders o
-      LEFT JOIN odts.dealers d  ON d.dealer_id  = o.dealer_id
+      LEFT JOIN odts.dealers d       ON d.dealer_id  = o.dealer_id
+      LEFT JOIN odts.products p      ON p.product_id = o.product_id
+      LEFT JOIN odts.dealer_party dp ON dp.party_id  = o.party_id
+      LEFT JOIN odts.code_reference lt ON lt.code_type = 'loading_type'     AND lt.code = o.load_type_code
+      LEFT JOIN odts.code_reference pl ON pl.code_type = 'loading_location' AND pl.code = o.preferred_location_code
       LEFT JOIN odts.order_dispatch od ON od.order_id = o.order_id
       WHERE o.order_id = $1
     `, [parseInt(req.params.id)]);
@@ -179,8 +198,7 @@ router.get('/api/dealer/parties', ensureDealer, async (req, res) => {
       `SELECT dp.party_id, dp.party_code, dp.party_company_name, dp.party_name,
               dp.party_address, dp.party_phone
          FROM odts.dealer_party dp
-         JOIN odts.dealers d ON d.dealer_code = dp.dealer_code
-        WHERE d.dealer_id = $1
+        WHERE dp.dealer_id = $1
           AND COALESCE(dp.party_is_active_flag, TRUE) = TRUE
         ORDER BY dp.party_company_name`,
       [dealer_id]
@@ -200,19 +218,21 @@ router.post('/api/dealer/parties', ensureDealer, async (req, res) => {
     const { party_company_name, party_phone, party_address } = req.body;
     if (!party_company_name) return res.status(400).json({ error: 'Party name is required.' });
 
-    // Get dealer_code for this dealer
-    const dealerRow = await pool.query(
-      'SELECT dealer_code FROM odts.dealers WHERE dealer_id = $1', [dealer_id]
-    );
-    if (!dealerRow.rows.length) return res.status(400).json({ error: 'Dealer not found.' });
-    const dealer_code = dealerRow.rows[0].dealer_code;
+    // Auto-generate a unique party_code from company name + timestamp
+    const autoCode = party_company_name.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)
+                     + '_' + Date.now().toString().slice(-5);
+
+    const userId = req.session.user.id;
+    if (!userId) return res.status(400).json({ error: 'User session invalid.' });
+
+    const createdBy = userId;
 
     const result = await pool.query(
       `INSERT INTO odts.dealer_party
-         (dealer_code, party_company_name, party_phone, party_address, party_is_active_flag, created_by, created_at)
-       VALUES ($1, $2, $3, $4, TRUE, $5, NOW())
+         (dealer_id, party_code, party_company_name, party_phone, party_address, party_is_active_flag, created_by, created_at, updated_by, updated_at)
+       VALUES ($1, $2, $3, $4, $5, TRUE, $6, NOW(), $6, NOW())
        RETURNING party_id, party_company_name, party_phone, party_address`,
-      [dealer_code, party_company_name, party_phone || null, party_address || null, req.session.user.user_id]
+      [dealer_id, autoCode, party_company_name, party_phone || null, party_address || null, createdBy]
     );
     res.status(201).json(result.rows[0]);
   } catch (e) {

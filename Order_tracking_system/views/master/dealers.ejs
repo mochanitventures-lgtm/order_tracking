@@ -15,8 +15,8 @@
 
 <script type="text/babel">
 const { useState, useEffect } = React;
-const EMPTY_DEALER = { dealer_name:'', dealer_company_name:'', dealer_code:'', dealer_phone:'', dealer_email:'', location_id:'', dealer_daily_limit:'', dealer_monthly_target:'', dealer_is_active_flag:true };
-const EMPTY_PARTY  = { party_code:'', party_name:'', party_company_name:'', party_phone:'', party_email:'', party_address:'', party_is_active_flag:true };
+const EMPTY_DEALER = { dealer_name:'', dealer_company_name:'', dealer_code:'', dealer_phone:'', dealer_email:'', dealer_daily_limit:'', dealer_monthly_target:'', dealer_is_active_flag:true };
+const EMPTY_PARTY  = { party_code:'', party_name:'', party_company_name:'', party_phone:'', party_email:'', party_address:'', party_is_active_flag:true, dealer_id:'' };
 
 function Toast({msg,type,onClose}){
   if(!msg) return null;
@@ -35,7 +35,7 @@ function PartyModal({dealer, onClose, notify}){
   const loadParties=async()=>{
     setLoading(true);
     try{
-      const r=await fetch(`/api/party/by-dealer/${encodeURIComponent(dealer.dealer_code)}`);
+      const r=await fetch(`/api/party/by-dealer/${encodeURIComponent(dealer.dealer_id)}`);
       if(!r.ok) throw new Error(await r.text());
       setParties(await r.json());
     }catch(e){notify(e.message,'danger');}
@@ -43,7 +43,7 @@ function PartyModal({dealer, onClose, notify}){
   };
   useEffect(()=>{loadParties();},[]);
 
-  const openAdd=()=>{setForm({...EMPTY_PARTY,dealer_code:dealer.dealer_code});setEditId(null);setShowForm(true);};
+  const openAdd=()=>{setForm({...EMPTY_PARTY,dealer_id:dealer.dealer_id});setEditId(null);setShowForm(true);};
   const openEdit=(p)=>{
     setForm({party_code:p.party_code||'',party_name:p.party_name||'',party_company_name:p.party_company_name||'',party_phone:p.party_phone||'',party_email:p.party_email||'',party_address:p.party_address||'',party_is_active_flag:p.party_is_active_flag});
     setEditId(p.party_id);setShowForm(true);
@@ -52,7 +52,7 @@ function PartyModal({dealer, onClose, notify}){
   const save=async(e)=>{
     e.preventDefault();setSaving(true);
     try{
-      const payload={...form,dealer_code:dealer.dealer_code};
+      const payload={...form,dealer_id:dealer.dealer_id};
       const res=await fetch(editId?`/api/party/${editId}`:'/api/party',{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       const d=await res.json();if(!res.ok)throw new Error(d.error);
       notify(editId?'Party updated':'Party added');
@@ -87,8 +87,8 @@ function PartyModal({dealer, onClose, notify}){
                   <form onSubmit={save}>
                     <div className="row g-3">
                       <div className="col-md-4">
-                        <label className="form-label fw-semibold">Party Code <span className="text-danger">*</span></label>
-                        <input className="form-control form-control-sm" value={form.party_code} onChange={e=>setForm({...form,party_code:e.target.value})} required/>
+                        <label className="form-label fw-semibold">Party Code <span className="text-muted fw-normal small">(Optional)</span></label>
+                        <input className="form-control form-control-sm" value={form.party_code} onChange={e=>setForm({...form,party_code:e.target.value})}/>
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-semibold">Party Company Name <span className="text-danger">*</span></label>
@@ -138,7 +138,7 @@ function PartyModal({dealer, onClose, notify}){
                       <tr>
                         <th>Party Code</th>
                         <th>Party Name</th>
-                        <th>Company Name</th>
+                        <th>Party Company Name</th>
                         <th>Phone</th>
                         <th>Email</th>
                         <th>Address</th>
@@ -177,7 +177,7 @@ function PartyModal({dealer, onClose, notify}){
 
 /* ── Main App ────────────────────────────────────────────────────── */
 function App(){
-  const [rows,setRows]=useState([]); const [locs,setLocs]=useState([]);
+  const [rows,setRows]=useState([]); 
   const [loading,setLoading]=useState(true); const [search,setSearch]=useState('');
   const [showModal,setShowModal]=useState(false); const [form,setForm]=useState(EMPTY_DEALER);
   const [editId,setEditId]=useState(null); const [saving,setSaving]=useState(false);
@@ -189,9 +189,9 @@ function App(){
 
   const notify=(msg,type='success')=>{setToast({msg,type});setTimeout(()=>setToast({msg:''}),4000);};
   const load=async()=>{setLoading(true);try{
-    const [dr,lr]=await Promise.all([fetch('/api/dealers'),fetch('/api/dealers/locations')]);
+    const dr=await fetch('/api/dealers');
     if(!dr.ok)throw new Error(await dr.text());
-    setRows(await dr.json()); setLocs(await lr.json());
+    setRows(await dr.json());
   }catch(e){notify(e.message,'danger');}finally{setLoading(false);}};
   useEffect(()=>{load();},[]);
 
@@ -220,7 +220,7 @@ function App(){
       setTimeout(()=>window.location.reload(),800);
     }catch(e){notify(e.message,'danger');}finally{setBulkUploading(false);};
   };
-  const openEdit=(r)=>{setForm({dealer_name:r.dealer_name,dealer_company_name:r.dealer_company_name||'',dealer_code:r.dealer_code||'',dealer_phone:r.dealer_phone||'',dealer_email:r.dealer_email||'',location_id:r.location_id||'',dealer_daily_limit:r.dealer_daily_limit||'',dealer_monthly_target:r.dealer_monthly_target||'',dealer_is_active_flag:r.dealer_is_active_flag});setEditId(r.dealer_id);setShowModal(true);};
+  const openEdit=(r)=>{setForm({dealer_name:r.dealer_name,dealer_company_name:r.dealer_company_name||'',dealer_code:r.dealer_code||'',dealer_phone:r.dealer_phone||'',dealer_email:r.dealer_email||'',dealer_daily_limit:r.dealer_daily_limit||'',dealer_monthly_target:r.dealer_monthly_target||'',dealer_is_active_flag:r.dealer_is_active_flag});setEditId(r.dealer_id);setShowModal(true);};
 
   const save=async(e)=>{e.preventDefault();setSaving(true);
     try{const res=await fetch(editId?`/api/dealers/${editId}`:'/api/dealers',{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
@@ -230,7 +230,7 @@ function App(){
   const sort=(col)=>{if(sortCol===col)setSortAsc(!sortAsc);else{setSortCol(col);setSortAsc(true);}};
   const SI=({col})=>sortCol===col?<span className="ms-1">{sortAsc?'↑':'↓'}</span>:<span className="text-muted ms-1">⇅</span>;
 
-  const filtered=[...rows].filter(r=>(r.dealer_name+' '+(r.dealer_company_name||'')+' '+(r.dealer_code||'')+' '+(r.location_name||'')).toLowerCase().includes(search.toLowerCase()))
+  const filtered=[...rows].filter(r=>(r.dealer_name+' '+(r.dealer_company_name||'')+' '+(r.dealer_code||'')).toLowerCase().includes(search.toLowerCase()))
     .sort((a,b)=>{let va=a[sortCol],vb=b[sortCol];if(typeof va==='string')va=va.toLowerCase();if(typeof vb==='string')vb=vb.toLowerCase();return sortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);});
 
   return(<div>
@@ -299,21 +299,16 @@ function App(){
           <div className="modal-header"><h5 className="modal-title">{editId?'Edit':'Add'} Dealer</h5><button type="button" className="btn-close" onClick={()=>setShowModal(false)}></button></div>
           <div className="modal-body">
             <div className="row g-3">
+              <div className="col-12"><label className="form-label fw-semibold">Dealer Code <span className="text-danger">*</span></label>
+                <input className="form-control" value={form.dealer_code} onChange={e=>setForm({...form,dealer_code:e.target.value})} required/></div>
               <div className="col-md-6"><label className="form-label fw-semibold">Dealer Name <span className="text-danger">*</span></label>
                 <input className="form-control" value={form.dealer_name} onChange={e=>setForm({...form,dealer_name:e.target.value})} required/></div>
               <div className="col-md-6"><label className="form-label fw-semibold">Dealer Company Name <span className="text-danger">*</span></label>
                 <input className="form-control" value={form.dealer_company_name} onChange={e=>setForm({...form,dealer_company_name:e.target.value})} required/></div>
-              <div className="col-md-6"><label className="form-label fw-semibold">Dealer Code <span className="text-danger">*</span></label>
-                <input className="form-control" value={form.dealer_code} onChange={e=>setForm({...form,dealer_code:e.target.value})} required/></div>
               <div className="col-md-6"><label className="form-label fw-semibold">Phone <span className="text-muted fw-normal small">(Optional)</span></label>
                 <input className="form-control" value={form.dealer_phone} onChange={e=>setForm({...form,dealer_phone:e.target.value})}/></div>
               <div className="col-md-6"><label className="form-label fw-semibold">Email <span className="text-muted fw-normal small">(Optional)</span></label>
                 <input className="form-control" type="email" value={form.dealer_email} onChange={e=>setForm({...form,dealer_email:e.target.value})}/></div>
-              <div className="col-md-6"><label className="form-label fw-semibold">Location</label>
-                <select className="form-select" value={form.location_id} onChange={e=>setForm({...form,location_id:e.target.value})}>
-                  <option value="">-- Select Location --</option>
-                  {locs.map(l=><option key={l.location_id} value={l.location_id}>{l.location_name}</option>)}
-                </select></div>
               <div className="col-md-6"><label className="form-label fw-semibold">Daily Limit <span className="text-danger">*</span></label>
                 <input className="form-control" type="number" min="0" step="0.01" placeholder="e.g. 100" value={form.dealer_daily_limit} onChange={e=>setForm({...form,dealer_daily_limit:e.target.value})} required/></div>
               <div className="col-md-6"><label className="form-label fw-semibold">Monthly Target <span className="text-danger">*</span></label>

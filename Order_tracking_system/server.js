@@ -4,7 +4,6 @@ const session = require('express-session');
 const path = require('path');
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
-const locationRoutes = require('./routes/locations');
 const dealerRoutes = require('./routes/dealers');
 const partyRoutes = require('./routes/party');
 const masterUserRoutes = require('./routes/masterUsers');
@@ -57,7 +56,6 @@ app.use((req, res, next) => {
 
 app.use('/', authRoutes);
 app.use('/', productRoutes);
-app.use('/', locationRoutes);
 app.use('/', dealerRoutes);
 app.use('/', partyRoutes);
 app.use('/', masterUserRoutes);

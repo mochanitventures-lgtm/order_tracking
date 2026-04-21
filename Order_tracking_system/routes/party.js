@@ -19,17 +19,17 @@ router.get('/master/party', ensureAuth, (req, res) => {
   res.render('master/party', { user: req.session.user });
 });
 
-// GET parties by dealer_code
-router.get('/api/party/by-dealer/:dealerCode', ensureAdmin, async (req, res) => {
+// GET parties by dealer_id
+router.get('/api/party/by-dealer/:dealerId', ensureAdmin, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT party_id, party_code, party_name, party_company_name,
               party_address, party_phone, party_email, party_is_active_flag,
-              dealer_code, created_at, updated_at
+              dealer_id, created_at, updated_at
          FROM odts.dealer_party
-        WHERE dealer_code = $1
+        WHERE dealer_id = $1
         ORDER BY party_id`,
-      [req.params.dealerCode]
+      [req.params.dealerId]
     );
     res.json(r.rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -60,7 +60,7 @@ router.get('/api/party', ensureAdmin, async (req, res) => {
               d.dealer_daily_limit,
               d.dealer_monthly_target
          FROM odts.dealer_party p
-         LEFT JOIN odts.dealers d ON d.dealer_code = p.dealer_code
+         LEFT JOIN odts.dealers d ON d.dealer_id = p.dealer_id
         ORDER BY p.party_id`
     );
     res.json(r.rows);
@@ -71,7 +71,7 @@ router.get('/api/party', ensureAdmin, async (req, res) => {
 router.get('/api/party/dealers-list', ensureAdmin, async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT dealer_code, dealer_name FROM odts.dealers
+      `SELECT dealer_id, dealer_name FROM odts.dealers
         WHERE COALESCE(dealer_is_active_flag, TRUE) = TRUE
         ORDER BY dealer_name`
     );
@@ -81,21 +81,25 @@ router.get('/api/party/dealers-list', ensureAdmin, async (req, res) => {
 
 // POST create
 router.post('/api/party', ensureAdmin, async (req, res) => {
-  const { dealer_code, party_code, party_company_name, party_name,
+  const { dealer_id, party_code, party_company_name, party_name,
           party_address, party_phone, party_email, party_is_active_flag } = req.body;
-  if (!party_code || !party_company_name) return res.status(400).json({ error: 'Party code and company name are required' });
+  if (!party_company_name) return res.status(400).json({ error: 'Party company name is required' });
   try {
-    const userId = req.session.user.id || null;
+    const userId = req.session.user.id;
+    if (!userId) return res.status(400).json({ error: 'User session invalid.' });
+    // Auto-generate party_code if not provided
+    const resolvedCode = (party_code || '').trim() ||
+      (party_company_name.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) + '_' + Date.now().toString().slice(-5));
     const r = await pool.query(
       `INSERT INTO odts.dealer_party
-         (dealer_code, party_code, party_company_name, party_name,
+         (dealer_id, party_code, party_company_name, party_name,
           party_address, party_phone, party_email, party_is_active_flag,
           created_by, created_at, updated_by, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),$10,now())
        RETURNING *`,
       [
-        dealer_code || null,
-        party_code.trim(),
+        dealer_id || null,
+        resolvedCode,
         party_company_name.trim(),
         (party_name || '').trim() || null,
         (party_address || '').trim() || null,
@@ -111,21 +115,22 @@ router.post('/api/party', ensureAdmin, async (req, res) => {
 
 // PUT update
 router.put('/api/party/:id', ensureAdmin, async (req, res) => {
-  const { dealer_code, party_code, party_company_name, party_name,
+  const { dealer_id, party_code, party_company_name, party_name,
           party_address, party_phone, party_email, party_is_active_flag } = req.body;
-  if (!party_code || !party_company_name) return res.status(400).json({ error: 'Party code and company name are required' });
+  if (!party_company_name) return res.status(400).json({ error: 'Party company name is required' });
   try {
-    const userId = req.session.user.id || null;
+    const userId = req.session.user.id;
+    if (!userId) return res.status(400).json({ error: 'User session invalid.' });
     const r = await pool.query(
       `UPDATE odts.dealer_party
-          SET dealer_code=$1, party_code=$2, party_company_name=$3, party_name=$4,
+          SET dealer_id=$1, party_code=$2, party_company_name=$3, party_name=$4,
               party_address=$5, party_phone=$6, party_email=$7, party_is_active_flag=$8,
               updated_by=$9, updated_at=now()
         WHERE party_id=$10
         RETURNING *`,
       [
-        dealer_code || null,
-        party_code.trim(),
+        dealer_id || null,
+        (party_code || '').trim() || null,
         party_company_name.trim(),
         (party_name || '').trim() || null,
         (party_address || '').trim() || null,
